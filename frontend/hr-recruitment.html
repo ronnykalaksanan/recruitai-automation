@@ -1,817 +1,559 @@
-{
-  "name": "AI Recruitment Intelligence System",
-  "nodes": [
-    {
-      "parameters": {
-        "model": "llama-3.3-70b-versatile",
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
-      "typeVersion": 1,
-      "position": [
-        560,
-        240
-      ],
-      "id": "107064ba-f435-46f5-8db2-2faa330863e9",
-      "name": "Groq Chat Model",
-      "credentials": {
-        "groqApi": {
-          "id": "i7oO2GzgCo66aTX7",
-          "name": "Groq account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "model": "llama-3.3-70b-versatile",
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
-      "typeVersion": 1,
-      "position": [
-        912,
-        240
-      ],
-      "id": "5a168065-f2e7-4f44-af8c-4528fd3609e4",
-      "name": "Groq Chat Model1",
-      "credentials": {
-        "groqApi": {
-          "id": "i7oO2GzgCo66aTX7",
-          "name": "Groq account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "cv-screening",
-        "responseMode": "responseNode",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2.1,
-      "position": [
-        -192,
-        16
-      ],
-      "id": "fbffb0b9-4daa-4620-8834-354f3b7c604b",
-      "name": "Receive CV Upload",
-      "webhookId": "b5ed027f-4a35-4d37-ae22-a0cb62bf1572"
-    },
-    {
-      "parameters": {
-        "operation": "pdf",
-        "binaryPropertyName": "cv",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.extractFromFile",
-      "typeVersion": 1.1,
-      "position": [
-        32,
-        16
-      ],
-      "id": "9b80da18-ac59-4613-8cbb-67cf6afb4c83",
-      "name": "Extract Text from PDF"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "c4a67f50-2d70-4423-a3c4-f4a2e0c7e0a6",
-              "name": "cv_text",
-              "value": "={{ $json.text }}",
-              "type": "string"
-            },
-            {
-              "id": "58111055-7595-4770-9d82-07c313dc8a27",
-              "name": "position",
-              "value": "={{ $('Receive CV Upload').item.json.body.Position }}",
-              "type": "string"
-            },
-            {
-              "id": "5d65f7ea-6aea-4b68-8f9b-4c42fac92b55",
-              "name": "requirements",
-              "value": "={{ $('Receive CV Upload').item.json.body.requirements }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        256,
-        16
-      ],
-      "id": "ce86ccd4-b96d-449a-ae5f-3771011f9520",
-      "name": "Prepare Extracted Data"
-    },
-    {
-      "parameters": {
-        "text": "=Extract information from this CV text:\n\n{{ $json.cv_text }}\n\nPosition applied: {{ $json.position }}",
-        "attributes": {
-          "attributes": [
-            {
-              "name": "name",
-              "description": "Extract the exact full name as written in the input. Do not generate or assume any data.",
-              "required": true
-            },
-            {
-              "name": "email",
-              "description": "Extract the exact email as written in the input. Do not generate or assume any data.",
-              "required": true
-            },
-            {
-              "name": "phone",
-              "description": "Extract the exact phone as written in the input. Do not generate or assume any data."
-            },
-            {
-              "name": "years_of_experience",
-              "type": "number",
-              "description": "Extract the exact years_of_experience as written in the input. Do not generate or assume any data.",
-              "required": true
-            },
-            {
-              "name": "skills",
-              "description": "Extract the exact skills as written in the input. Do not generate or assume any data.",
-              "required": true
-            },
-            {
-              "name": "education",
-              "description": "Extract the exact education as written in the input. Do not generate or assume any data."
-            },
-            {
-              "name": "previous_companies",
-              "description": "Extract the exact previous_companies as written in the input. Do not generate or assume any data."
-            },
-            {
-              "name": "position_applied",
-              "description": "Extract the exact position_applied as written in the input. Do not generate or assume any data.",
-              "required": true
-            }
-          ]
-        },
-        "options": {
-          "systemPromptTemplate": "You are an expert extraction algorithm.\nOnly extract relevant information from the text.\nIf you do not know the value of an attribute asked to extract, you may omit the attribute's value.\n\nExtract information ONLY from the provided text. \nDo NOT generate, assume, or hallucinate any data.\nIf information is not found, return null."
-        }
-      },
-      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
-      "typeVersion": 1.2,
-      "position": [
-        480,
-        16
-      ],
-      "id": "877e6bed-9ffc-4113-82a4-cdcdb47bae58",
-      "name": "AI: Extract Candidate Data"
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "=Analyze this candidate for the following position:\n\nPosition: {{ $('Prepare Extracted Data').item.json.position }}\n\nJob Requirements:\n{{ $('Prepare Extracted Data').item.json.requirements }}\n\nCandidate Profile:\n- Name: {{ $('AI: Extract Candidate Data').item.json.output.name }}\n- Position Applied: {{ $('AI: Extract Candidate Data').item.json.output.position_applied }}\n- Years of Experience: {{ $('AI: Extract Candidate Data').item.json.output.years_of_experience }} years (if 0, treat as fresh graduate)\n- Education: {{ $('AI: Extract Candidate Data').item.json.output.education }}\n- Skills: {{ $('AI: Extract Candidate Data').item.json.output.skills }}\n- Previous Companies: {{ $('AI: Extract Candidate Data').item.json.output.previous_companies }} (if empty, candidate has no work experience)\n\nRemember: Base your analysis ONLY on the data above. Match candidate against job requirements specifically.",
-        "messages": {
-          "messageValues": [
-            {
-              "message": "You are an expert HR recruiter with 10+ years of experience.  STRICT RULES - YOU MUST FOLLOW THESE WITHOUT EXCEPTION: - Use ONLY the exact data given in the user message.  - NEVER invent, assume, or hallucinate any information. - If Years of Experience is 0, say \"Fresh graduate\" — never mention any years of experience. - If Previous Companies is empty, say \"No previous work experience\" — never invent company names. - If any field is missing, write \"Not provided\" — never guess.  Always respond in this exact format: 1. Score: [0-100] 2. Strengths: [exactly 3 points based ONLY on provided data] 3. Weaknesses: [exactly 2 points based ONLY on provided data] 4. Recommendation: SHORTLIST / REJECT / HOLD 5. Reason: [1-2 sentences only]  Be concise and professional."
-            }
-          ]
-        },
-        "batching": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1.9,
-      "position": [
-        832,
-        16
-      ],
-      "id": "48c5aa0b-8d97-4405-9b4a-c09a41c6873a",
-      "name": "AI: Screen & Match Requirements"
-    },
-    {
-      "parameters": {
-        "operation": "append",
-        "documentId": {
-          "__rl": true,
-          "value": "1Dckx-RzTkGOJN0fT-OiumSTl8JI9eB2h52rsGIMR0_g",
-          "mode": "list",
-          "cachedResultName": "AI Recruitment Tracker",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Dckx-RzTkGOJN0fT-OiumSTl8JI9eB2h52rsGIMR0_g/edit?usp=drivesdk"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": "gid=0",
-          "mode": "list",
-          "cachedResultName": "Sheet1",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Dckx-RzTkGOJN0fT-OiumSTl8JI9eB2h52rsGIMR0_g/edit#gid=0"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "Timestamp": "={{ $now }}",
-            "Name": "={{ $('AI: Extract Candidate Data').item.json.output.name }}",
-            "Email": "={{ $('AI: Extract Candidate Data').item.json.output.email }}",
-            "Phone": "='{{ $('AI: Extract Candidate Data').item.json.output.phone }}",
-            "Position": "={{ $('AI: Extract Candidate Data').item.json.output.position_applied }}",
-            "Experience": "={{ $('AI: Extract Candidate Data').item.json.output.years_of_experience }}",
-            "Skills": "={{ $('AI: Extract Candidate Data').item.json.output.skills }}",
-            "Education": "={{ $('AI: Extract Candidate Data').item.json.output.education }}",
-            "Previous Companies": "={{ $('AI: Extract Candidate Data').item.json.output.previous_companies }}",
-            "AI Score": "={{ $json.text }}",
-            "Recommendation": "={{ $json.text }}",
-            "Status": "Pending"
-          },
-          "matchingColumns": [],
-          "schema": [
-            {
-              "id": "Timestamp",
-              "displayName": "Timestamp",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Name",
-              "displayName": "Name",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Email",
-              "displayName": "Email",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Phone",
-              "displayName": "Phone",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Position",
-              "displayName": "Position",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Experience",
-              "displayName": "Experience",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Skills",
-              "displayName": "Skills",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Education",
-              "displayName": "Education",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Previous Companies",
-              "displayName": "Previous Companies",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "AI Score",
-              "displayName": "AI Score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Recommendation",
-              "displayName": "Recommendation",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Status",
-              "displayName": "Status",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
-      "position": [
-        1184,
-        16
-      ],
-      "id": "f15db16c-8666-4fe6-945b-950479a850f9",
-      "name": "Log Candidate to Sheet",
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "jSVGdJ2TvJhkNAZz",
-          "name": "Google Sheets OAuth2 API"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "c9a6131b-9b55-4aed-8e2b-00d422cacabe",
-              "leftValue": "={{ $('AI: Screen & Match Requirements').item.json.text }}",
-              "rightValue": "SHORTLIST",
-              "operator": {
-                "type": "string",
-                "operation": "contains"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        1408,
-        16
-      ],
-      "id": "dd5d3a23-ff28-4140-b853-350ed3ee499c",
-      "name": "Route by Recommendation"
-    },
-    {
-      "parameters": {
-        "sendTo": "={{ $('AI: Extract Candidate Data').item.json.output.email }}",
-        "subject": "=Interview Invitation - {{ $('AI: Extract Candidate Data').item.json.output.position_applied }} Position",
-        "message": "=<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n<style>\n  body { margin: 0; padding: 0; background: #f4f7f9; font-family: 'Arial', sans-serif; }\n  .wrapper { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }\n  .header { background: linear-gradient(135deg, #1e40af, #3b82f6); padding: 40px 40px 32px; text-align: center; }\n  .header-icon { font-size: 48px; margin-bottom: 12px; }\n  .header h1 { color: white; font-size: 24px; margin: 0; font-weight: 700; letter-spacing: -0.5px; }\n  .header p { color: rgba(255,255,255,0.8); font-size: 14px; margin: 8px 0 0; }\n  .badge { display: inline-block; background: #22c55e; color: white; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-top: 16px; }\n  .body { padding: 40px; }\n  .greeting { font-size: 18px; font-weight: 600; color: #0f172a; margin-bottom: 16px; }\n  .text { font-size: 15px; color: #475569; line-height: 1.7; margin-bottom: 16px; }\n  .info-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 20px 24px; margin: 24px 0; }\n  .info-box-title { font-size: 13px; font-weight: 600; color: #059669; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }\n  .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #d1fae5; font-size: 14px; }\n  .info-row:last-child { border-bottom: none; }\n  .info-label { color: #64748b; }\n  .info-value { color: #0f172a; font-weight: 600; }\n  .cta { text-align: center; margin: 32px 0; }\n  .cta-btn { display: inline-block; background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 14px 32px; border-radius: 8px; font-size: 15px; font-weight: 600; text-decoration: none; }\n  .footer { background: #f8fafc; padding: 24px 40px; text-align: center; border-top: 1px solid #e2e8f0; }\n  .footer p { font-size: 12px; color: #94a3b8; margin: 0; }\n  .footer strong { color: #64748b; }\n</style>\n</head>\n<body>\n<div class=\"wrapper\">\n  <div class=\"header\">\n    <div class=\"header-icon\">🎉</div>\n    <h1>Congratulations!</h1>\n    <p>Your application has been reviewed</p>\n    <div class=\"badge\">✅ Shortlisted for Interview</div>\n  </div>\n  <div class=\"body\">\n    <div class=\"greeting\">Dear {{ $('AI: Extract Candidate Data').item.json.output.name }},</div>\n    <p class=\"text\">We are thrilled to inform you that after carefully reviewing your application, you have been <strong>shortlisted</strong> for the next stage of our recruitment process.</p>\n    <p class=\"text\">Your skills and experience stood out to our team, and we would love to learn more about you.</p>\n    <div class=\"info-box\">\n      <div class=\"info-box-title\">📋 Application Details</div>\n      <div class=\"info-row\">\n        <span class=\"info-label\">Position</span>\n        <span class=\"info-value\">{{ $('AI: Extract Candidate Data').item.json.output.position_applied }}</span>\n      </div>\n      <div class=\"info-row\">\n        <span class=\"info-label\">Status</span>\n        <span class=\"info-value\" style=\"color:#059669\">Shortlisted ✅</span>\n      </div>\n      <div class=\"info-row\">\n        <span class=\"info-label\">Next Step</span>\n        <span class=\"info-value\">Interview Session</span>\n      </div>\n    </div>\n    <p class=\"text\">Please <strong>reply to this email</strong> to schedule your interview session at your earliest convenience. We look forward to speaking with you!</p>\n    <div class=\"cta\">\n      <a href=\"mailto:hr@company.com\" class=\"cta-btn\">📅 Schedule Interview</a>\n    </div>\n    <p class=\"text\" style=\"font-size:13px;color:#94a3b8;text-align:center;\">If you have any questions, feel free to reply to this email.</p>\n  </div>\n  <div class=\"footer\">\n    <p><strong>HR Team</strong> · Recruitment Division</p>\n    <p style=\"margin-top:4px;\">This is an automated message from our recruitment system.</p>\n  </div>\n</div>\n</body>\n</html>",
-        "options": {
-          "appendAttribution": false
-        }
-      },
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.2,
-      "position": [
-        1632,
-        -80
-      ],
-      "id": "e1e736a5-99b1-4c3f-a297-98b58b0a31d3",
-      "name": "Email: Interview Invitation",
-      "webhookId": "7462f083-6fc3-40b8-abbf-de261f87fd18",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "0J4nGCuBMzzviNgA",
-          "name": "Gmail OAuth2 API"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "sendTo": "={{ $('AI: Extract Candidate Data').item.json.output.email }}",
-        "subject": "=Application Update - {{ $('AI: Extract Candidate Data').item.json.output.position_applied }} Position",
-        "message": "=<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n<style>\n  body { margin: 0; padding: 0; background: #f4f7f9; font-family: 'Arial', sans-serif; }\n  .wrapper { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }\n  .header { background: linear-gradient(135deg, #475569, #64748b); padding: 40px 40px 32px; text-align: center; }\n  .header-icon { font-size: 48px; margin-bottom: 12px; }\n  .header h1 { color: white; font-size: 24px; margin: 0; font-weight: 700; }\n  .header p { color: rgba(255,255,255,0.8); font-size: 14px; margin: 8px 0 0; }\n  .badge { display: inline-block; background: rgba(255,255,255,0.2); color: white; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-top: 16px; border: 1px solid rgba(255,255,255,0.3); }\n  .body { padding: 40px; }\n  .greeting { font-size: 18px; font-weight: 600; color: #0f172a; margin-bottom: 16px; }\n  .text { font-size: 15px; color: #475569; line-height: 1.7; margin-bottom: 16px; }\n  .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px 24px; margin: 24px 0; }\n  .info-box-title { font-size: 13px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }\n  .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0; font-size: 14px; }\n  .info-row:last-child { border-bottom: none; }\n  .info-label { color: #64748b; }\n  .info-value { color: #0f172a; font-weight: 600; }\n  .encourage { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 20px 24px; margin: 24px 0; }\n  .encourage p { font-size: 14px; color: #92400e; margin: 0; line-height: 1.6; }\n  .footer { background: #f8fafc; padding: 24px 40px; text-align: center; border-top: 1px solid #e2e8f0; }\n  .footer p { font-size: 12px; color: #94a3b8; margin: 0; }\n  .footer strong { color: #64748b; }\n</style>\n</head>\n<body>\n<div class=\"wrapper\">\n  <div class=\"header\">\n    <div class=\"header-icon\">📩</div>\n    <h1>Application Update</h1>\n    <p>Regarding your recent application</p>\n    <div class=\"badge\">Application Status Update</div>\n  </div>\n  <div class=\"body\">\n    <div class=\"greeting\">Dear {{ $('AI: Extract Candidate Data').item.json.output.name }},</div>\n    <p class=\"text\">Thank you for your interest in joining our team and for taking the time to apply for the position below. We truly appreciate the effort you put into your application.</p>\n    <div class=\"info-box\">\n      <div class=\"info-box-title\">📋 Application Details</div>\n      <div class=\"info-row\">\n        <span class=\"info-label\">Position</span>\n        <span class=\"info-value\">{{ $('AI: Extract Candidate Data').item.json.output.position_applied }}</span>\n      </div>\n      <div class=\"info-row\">\n        <span class=\"info-label\">Status</span>\n        <span class=\"info-value\" style=\"color:#dc2626\">Not Selected ❌</span>\n      </div>\n    </div>\n    <p class=\"text\">After careful consideration, we regret to inform you that we will not be moving forward with your application at this time. This was a difficult decision as we received many strong applications.</p>\n    <div class=\"encourage\">\n      <p>💛 <strong>Don't be discouraged!</strong> We encourage you to continue developing your skills and apply for future opportunities that match your profile. Every experience is a stepping stone to success.</p>\n    </div>\n    <p class=\"text\">We wish you all the best in your job search and future endeavors. Thank you again for considering us as your potential employer.</p>\n  </div>\n  <div class=\"footer\">\n    <p><strong>HR Team</strong> · Recruitment Division</p>\n    <p style=\"margin-top:4px;\">This is an automated message from our recruitment system.</p>\n  </div>\n</div>\n</body>\n</html>",
-        "options": {
-          "appendAttribution": false
-        }
-      },
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.2,
-      "position": [
-        1632,
-        112
-      ],
-      "id": "3e04abc6-e6c2-4e7e-91f8-e30ca79b8929",
-      "name": "Email: Rejection Notice",
-      "webhookId": "edd46039-0d53-4366-b6cb-52d39ce3deb4",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "0J4nGCuBMzzviNgA",
-          "name": "Gmail OAuth2 API"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "bbf87118-f0d2-4d1f-a520-2c0d9feb046f",
-              "name": "status",
-              "value": "success",
-              "type": "string"
-            },
-            {
-              "id": "08fe802d-bae7-481f-85f6-88e23ec44be1",
-              "name": "candidate ",
-              "value": "={{ $('AI: Extract Candidate Data').item.json.output.name }}",
-              "type": "string"
-            },
-            {
-              "id": "6605e94d-72e9-43cd-8be1-6accaa40f654",
-              "name": "recommendation ",
-              "value": "={{ $('AI: Screen & Match Requirements').item.json.text }}",
-              "type": "string"
-            },
-            {
-              "id": "7d9d2698-5f6b-40e8-a2be-58529a78ac5d",
-              "name": "name",
-              "value": "={{ $('AI: Extract Candidate Data').item.json.output.name }}",
-              "type": "string"
-            },
-            {
-              "id": "c5a55109-9596-4f06-9f8e-ac097c23fbab",
-              "name": "experience",
-              "value": "={{ $('AI: Extract Candidate Data').item.json.output.years_of_experience }}",
-              "type": "string"
-            },
-            {
-              "id": "73310821-cab1-410b-b4f6-786a61dee721",
-              "name": "education",
-              "value": "={{ $('AI: Extract Candidate Data').item.json.output.education }}",
-              "type": "string"
-            },
-            {
-              "id": "44d8fe82-bfa7-4b77-8b0c-8f35e7e26107",
-              "name": "skills",
-              "value": "={{ $('AI: Extract Candidate Data').item.json.output.skills }}",
-              "type": "string"
-            },
-            {
-              "id": "7cb3f75a-258b-4b86-bd8e-7b762daff208",
-              "name": "text",
-              "value": "={{ $('AI: Screen & Match Requirements').item.json.text }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        1856,
-        16
-      ],
-      "id": "65c83f35-fc81-4466-a438-38c457859337",
-      "name": "Format Response for Frontend"
-    },
-    {
-      "parameters": {
-        "respondWith": "allIncomingItems",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.5,
-      "position": [
-        2080,
-        16
-      ],
-      "id": "0c6886d2-f6be-4c30-8f23-64d0f9933576",
-      "name": "Respond to Frontend"
-    },
-    {
-      "parameters": {
-        "content": "### ENTRY POINT\nReceives PDF CV + job_id + requirements from frontend (multipart/form-data)\nField name: \"cv\" for the file",
-        "height": 240,
-        "width": 192,
-        "color": 7
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        -240,
-        -240
-      ],
-      "typeVersion": 1,
-      "id": "6395daad-6da7-4f04-8957-ec3bf8e51755",
-      "name": "Sticky Note"
-    },
-    {
-      "parameters": {
-        "content": "### 📄 PDF PROCESSING\nConverts uploaded PDF into raw text for AI to read",
-        "height": 208,
-        "width": 368,
-        "color": 7
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        32,
-        -240
-      ],
-      "typeVersion": 1,
-      "id": "20f7ee48-08a4-49b1-a398-0c4eedd950a6",
-      "name": "Sticky Note1"
-    },
-    {
-      "parameters": {
-        "content": "### 🤖 AI EXTRACTION\nExtracts structured data (name, email, skills, experience, education)\nfrom raw CV text. Strict rule: no hallucination, only extract what's written.",
-        "height": 256,
-        "width": 224,
-        "color": 7
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        480,
-        -272
-      ],
-      "typeVersion": 1,
-      "id": "dcc7d779-10b7-4783-8a15-3c1e4b4b25b1",
-      "name": "Sticky Note2"
-    },
-    {
-      "parameters": {
-        "content": "### 🎯 AI SCREENING\nCompares candidate profile against job requirements from the posting.\nOutputs: score, strengths, weaknesses, recommendation (SHORTLIST/REJECT/HOLD)",
-        "height": 272,
-        "width": 288,
-        "color": 7
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        800,
-        -272
-      ],
-      "typeVersion": 1,
-      "id": "668d8310-ba5c-4ad3-b0d6-b11780553d26",
-      "name": "Sticky Note3"
-    },
-    {
-      "parameters": {
-        "content": "### 🔀 ROUTING LOGIC\nTRUE → Shortlisted candidates → Interview Invitation\nFALSE → Rejected/Hold candidates → Rejection Notice",
-        "height": 256,
-        "width": 208,
-        "color": 7
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        1344,
-        -272
-      ],
-      "typeVersion": 1,
-      "id": "bfbc469e-2552-4b5e-bed1-2eaacc77310c",
-      "name": "Sticky Note4"
-    },
-    {
-      "parameters": {
-        "content": "### 📤 \nLog result to Google Sheets\n",
-        "height": 272,
-        "width": 150,
-        "color": 7
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        1152,
-        -272
-      ],
-      "typeVersion": 1,
-      "id": "c9d8c31d-b6d3-4718-ace5-49bb25c350b4",
-      "name": "Sticky Note5"
-    },
-    {
-      "parameters": {
-        "content": "### 📤 \n1. Send appropriate email to candidate  \n2. Return formatted result to frontend",
-        "height": 256,
-        "width": 336,
-        "color": 7
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        1632,
-        -352
-      ],
-      "typeVersion": 1,
-      "id": "0efd360b-b162-44ba-9b6d-915c64dfa4a1",
-      "name": "Sticky Note6"
-    },
-    {
-      "parameters": {
-        "content": "## WORKFLOW 1\nAI Recruitment Intelligence System",
-        "height": 144,
-        "width": 352,
-        "color": 5
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        736,
-        -592
-      ],
-      "typeVersion": 1,
-      "id": "1d6dec83-b2a5-43f6-8f98-a933cf8baa1c",
-      "name": "Sticky Note7"
-    },
-    {
-      "parameters": {
-        "content": "## 🚀 FUTURE IMPROVEMENTS\n\n1. MULTI JOB POSTING\n   - Frontend currently only shows data[0] from sheet\n   - Need: job selector dropdown OR job_id in URL param\n   - Backend: filter by job_id, not just \"active\" status\n\n2. CANDIDATE DATABASE\n   - Currently only logs to Sheets (good for demo, not scalable)\n   - Upgrade to: Airtable / Supabase / PostgreSQL for larger volume\n\n3. DUPLICATE APPLICATION CHECK\n   - No check if same candidate applies twice for same job\n   - Add: email + job_id uniqueness validation\n\n4. OCR SUPPORT\n   - Current \"Extract from File\" only works on text-based PDF\n   - Scanned/image CVs will fail\n   - Upgrade: add OCR node (e.g. Google Vision API) as fallback\n\n5. HR DASHBOARD\n   - No way to view all candidates in one place currently\n   - Build: simple admin frontend to view/filter/export candidates\n\n6. INTERVIEW SCHEDULING\n   - \"Reply to schedule interview\" is manual right now\n   - Upgrade: integrate Calendly/Google Calendar for auto-booking\n\n7. RATE LIMITING / SPAM PROTECTION\n   - Webhook is public, no protection against spam submissions\n   - Add: simple captcha or submission rate limit\n\n8. MULTI-LANGUAGE SUPPORT\n   - Currently English-only prompts and emails\n   - Could detect CV language and respond accordingly",
-        "height": 880,
-        "width": 512
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        -208,
-        368
-      ],
-      "typeVersion": 1,
-      "id": "7fefcebb-fde1-461d-97da-497ec2b1cda6",
-      "name": "Sticky Note8"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RecruitAI - Job Application</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #1e40af; --primary-light: #3b82f6; --primary-dark: #1e3a8a;
+    --success: #059669; --danger: #dc2626; --warning: #d97706;
+    --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0;
+    --text: #0f172a; --text-muted: #64748b; --text-light: #94a3b8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; min-height: 100vh; }
+
+  .navbar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 40px; height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .navbar-brand { display: flex; align-items: center; gap: 10px; }
+  .brand-icon { width: 34px; height: 34px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 17px; }
+  .brand-name { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
+  .brand-sub { font-size: 11px; color: var(--text-muted); }
+  .nav-badge { padding: 4px 12px; background: #eff6ff; color: var(--primary); border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid #bfdbfe; }
+
+  .main { max-width: 1200px; margin: 0 auto; padding: 40px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+
+  /* Card */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+  .card-body { padding: 28px; }
+
+  /* Job posting skeleton */
+  .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 6px; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* Job Header */
+  .job-header { background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #2563eb 100%); padding: 28px; color: white; }
+  .company-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .company-logo { width: 48px; height: 48px; background: rgba(255,255,255,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; backdrop-filter: blur(4px); }
+  .company-name { font-size: 13px; font-weight: 500; opacity: 0.85; margin-bottom: 2px; }
+  .company-about { font-size: 12px; opacity: 0.65; line-height: 1.4; }
+  .job-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 12px; }
+  .job-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .job-tag { padding: 4px 12px; background: rgba(255,255,255,0.15); border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid rgba(255,255,255,0.2); }
+  .salary-box { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; padding: 14px 18px; display: inline-flex; align-items: center; gap: 10px; backdrop-filter: blur(4px); }
+  .salary-label { font-size: 11px; opacity: 0.7; margin-bottom: 2px; }
+  .salary-value { font-size: 18px; font-weight: 700; }
+
+  /* Job body */
+  .job-section { padding: 20px 28px; border-bottom: 1px solid var(--border); }
+  .job-section:last-child { border-bottom: none; }
+  .section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .section-text { font-size: 14px; color: var(--text); line-height: 1.6; }
+
+  .tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag { padding: 5px 12px; background: #eff6ff; color: var(--primary); border-radius: 6px; font-size: 13px; font-weight: 500; border: 1px solid #bfdbfe; }
+  .tag.requirement { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
+
+  .req-list { display: flex; flex-direction: column; gap: 8px; }
+  .req-item { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--text); line-height: 1.5; }
+  .req-bullet { width: 20px; height: 20px; background: #eff6ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; margin-top: 1px; color: var(--primary); font-weight: 700; }
+
+  /* Upload section */
+  .upload-section { padding: 20px 28px; background: #f8fafc; }
+  .upload-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .upload-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+
+  .upload-area { border: 2px dashed var(--border); border-radius: 10px; padding: 28px 20px; text-align: center; cursor: pointer; transition: all 0.2s; background: white; position: relative; }
+  .upload-area:hover, .upload-area.dragover { border-color: var(--primary-light); background: #eff6ff; }
+  .upload-area.has-file { border-color: var(--success); background: #f0fdf4; border-style: solid; }
+  .upload-icon { font-size: 32px; margin-bottom: 8px; }
+  .upload-text { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .upload-hint { font-size: 12px; color: var(--text-muted); }
+  .file-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+
+  .file-info { display: none; align-items: center; gap: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; margin-top: 10px; }
+  .file-info.show { display: flex; }
+  .file-info-name { font-size: 13px; font-weight: 500; color: #059669; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-info-size { font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
+  .btn-remove { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 14px; padding: 4px; flex-shrink: 0; }
+
+  .btn-submit { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; }
+  .btn-submit:hover { background: var(--primary-dark); }
+  .btn-submit:disabled { background: var(--text-light); cursor: not-allowed; }
+
+  /* Right panel */
+  .card-header { padding: 20px 28px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .card-icon { width: 36px; height: 36px; background: #eff6ff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .card-title { font-size: 15px; font-weight: 600; color: var(--text); }
+  .card-subtitle { font-size: 12px; color: var(--text-muted); }
+
+  /* Loading */
+  .loading-state { display: none; padding: 48px 28px; text-align: center; }
+  .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .loading-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+  .loading-steps { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; max-width: 220px; margin: 0 auto; }
+  .loading-step { font-size: 13px; color: var(--text-light); display: flex; align-items: center; gap: 8px; }
+  .loading-step.active { color: var(--primary); font-weight: 500; }
+  .loading-step.done { color: var(--success); }
+  .step-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+  /* Empty state */
+  .empty-state { padding: 60px 28px; text-align: center; }
+  .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  .empty-sub { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+  /* Result */
+  .result-panel { display: none; padding: 28px; }
+  .status-card { border-radius: 10px; padding: 20px; margin-bottom: 16px; display: flex; align-items: center; gap: 16px; }
+  .status-card.shortlist { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .status-card.reject { background: #fef2f2; border: 1px solid #fecaca; }
+  .status-card.hold { background: #fffbeb; border: 1px solid #fde68a; }
+  .status-icon { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.08); flex-shrink: 0; }
+  .status-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 4px; }
+  .status-name { font-size: 18px; font-weight: 700; color: var(--text); }
+  .status-position { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
+  .candidate-info { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .info-item { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
+  .info-item-label { font-size: 11px; color: var(--text-muted); font-weight: 500; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .info-item-value { font-size: 13px; font-weight: 600; color: var(--text); }
+
+  .score-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
+  .score-item { text-align: center; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 8px; }
+  .score-value { font-size: 28px; font-weight: 700; color: var(--primary); }
+  .score-label { font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+  .analysis-section { margin-bottom: 16px; }
+  .analysis-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px; }
+  .analysis-text { font-size: 14px; color: var(--text); line-height: 1.6; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+
+  /* Requirements match */
+  .match-section { margin-bottom: 16px; }
+  .match-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px; }
+  .match-list { display: flex; flex-direction: column; gap: 6px; }
+  .match-item { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 8px 12px; border-radius: 8px; }
+  .match-item.met { background: #f0fdf4; color: #059669; border: 1px solid #bbf7d0; }
+  .match-item.not-met { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+  .btn-reset { width: 100%; padding: 10px; background: none; border: 1px solid var(--border); border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text-muted); cursor: pointer; margin-top: 8px; transition: all 0.2s; }
+  .btn-reset:hover { background: var(--bg); color: var(--text); }
+
+  /* Loading job skeleton */
+  .job-loading { padding: 28px; }
+  .skel-line { height: 14px; margin-bottom: 10px; border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <div class="brand-icon">🤖</div>
+    <div>
+      <div class="brand-name">RecruitAI</div>
+      <div class="brand-sub">Powered by n8n + Groq AI</div>
+    </div>
+  </div>
+  <div class="nav-badge">🟢 Now Hiring</div>
+</nav>
+
+<div class="main">
+
+  <!-- LEFT: Job Posting -->
+  <div class="card" id="jobCard">
+    <!-- Loading skeleton -->
+    <div class="job-loading" id="jobLoading">
+      <div class="skeleton skel-line" style="width:40%;height:10px;margin-bottom:20px"></div>
+      <div class="skeleton skel-line" style="width:70%;height:24px;margin-bottom:8px"></div>
+      <div class="skeleton skel-line" style="width:50%;height:14px;margin-bottom:24px"></div>
+      <div class="skeleton skel-line" style="width:100%;height:12px"></div>
+      <div class="skeleton skel-line" style="width:90%;height:12px"></div>
+      <div class="skeleton skel-line" style="width:95%;height:12px"></div>
+    </div>
+
+    <!-- Job content (hidden until loaded) -->
+    <div id="jobContent" style="display:none">
+      <div class="job-header">
+        <div class="company-row">
+          <div class="company-logo">🏢</div>
+          <div>
+            <div class="company-name" id="companyName">—</div>
+            <div class="company-about" id="companyAbout">—</div>
+          </div>
+        </div>
+        <div class="job-title" id="jobTitle">—</div>
+        <div class="job-tags">
+          <div class="job-tag" id="workType">—</div>
+          <div class="job-tag">📍 Open Application</div>
+        </div>
+        <div class="salary-box">
+          <div>💰</div>
+          <div>
+            <div class="salary-label">Annual Salary</div>
+            <div class="salary-value" id="salaryRange">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="job-section">
+        <div class="section-title">📋 Job Description</div>
+        <div class="section-text" id="jobdesk">—</div>
+      </div>
+
+      <div class="job-section">
+        <div class="section-title">🎁 Benefits & Facilities</div>
+        <div class="tag-list" id="facilities">—</div>
+      </div>
+
+      <div class="job-section">
+        <div class="section-title">✅ Requirements</div>
+        <div class="req-list" id="requirements">—</div>
+      </div>
+
+      <div class="upload-section">
+        <div class="upload-title">📄 Apply for this position</div>
+        <div class="upload-sub">Upload your CV/Resume in PDF format to start AI screening</div>
+
+        <div class="upload-area" id="uploadArea">
+          <input type="file" class="file-input" id="cvFile" accept=".pdf" onchange="handleFileSelect(event)">
+          <div id="uploadPrompt">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Drop your CV here or click to browse</div>
+            <div class="upload-hint">PDF only · Max 10MB</div>
+          </div>
+          <div id="uploadSuccess" style="display:none">
+            <div class="upload-icon">✅</div>
+            <div class="upload-text" style="color:#059669">CV Ready!</div>
+            <div class="upload-hint" id="uploadedFileName" style="color:#059669"></div>
+          </div>
+        </div>
+
+        <div class="file-info" id="fileInfo">
+          <span>📄</span>
+          <span class="file-info-name" id="fileName">—</span>
+          <span class="file-info-size" id="fileSize">—</span>
+          <button class="btn-remove" onclick="removeFile()">✕</button>
+        </div>
+
+        <button class="btn-submit" id="submitBtn" onclick="submitCandidate()">
+          <span>🤖</span> Run AI Screening
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Result -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">📊</div>
+      <div>
+        <div class="card-title">Screening Result</div>
+        <div class="card-subtitle">AI analysis will appear here</div>
+      </div>
+    </div>
+
+    <div class="loading-state" id="loadingState">
+      <div class="spinner"></div>
+      <div class="loading-text">Analyzing your CV...</div>
+      <div class="loading-sub">This may take up to 30 seconds</div>
+      <div class="loading-steps">
+        <div class="loading-step" id="step1"><div class="step-dot"></div> Extracting text from PDF</div>
+        <div class="loading-step" id="step2"><div class="step-dot"></div> AI analyzing candidate</div>
+        <div class="loading-step" id="step3"><div class="step-dot"></div> Matching requirements</div>
+        <div class="loading-step" id="step4"><div class="step-dot"></div> Sending email & saving data</div>
+      </div>
+    </div>
+
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">🎯</div>
+      <div class="empty-title">Ready to Screen</div>
+      <div class="empty-sub">Upload your CV on the left<br>to get AI-powered evaluation results.</div>
+    </div>
+
+    <div class="result-panel" id="resultPanel">
+      <div class="status-card" id="statusCard">
+        <div class="status-icon" id="statusIcon">—</div>
+        <div>
+          <div class="status-label" id="statusLabel">—</div>
+          <div class="status-name" id="statusName">—</div>
+          <div class="status-position" id="statusPosition">—</div>
+        </div>
+      </div>
+
+      <div class="candidate-info">
+        <div class="info-item">
+          <div class="info-item-label">Experience</div>
+          <div class="info-item-value" id="infoExp">—</div>
+        </div>
+        <div class="info-item">
+          <div class="info-item-label">Education</div>
+          <div class="info-item-value" id="infoEdu">—</div>
+        </div>
+        <div class="info-item" style="grid-column:1/-1">
+          <div class="info-item-label">Skills</div>
+          <div class="info-item-value" id="infoSkills">—</div>
+        </div>
+      </div>
+
+      <div class="score-row">
+        <div class="score-item">
+          <div class="score-value" id="scoreValue">—</div>
+          <div class="score-label">AI Score</div>
+        </div>
+        <div class="score-item">
+          <div class="score-value" id="expValue">—</div>
+          <div class="score-label">Exp. Years</div>
+        </div>
+        <div class="score-item">
+          <div class="score-value" id="skillCount">—</div>
+          <div class="score-label">Skills</div>
+        </div>
+      </div>
+
+      <div class="analysis-section">
+        <div class="analysis-title">💪 Strengths</div>
+        <div class="analysis-text" id="strengthsText">—</div>
+      </div>
+      <div class="analysis-section">
+        <div class="analysis-title">⚠️ Areas for Improvement</div>
+        <div class="analysis-text" id="weaknessText">—</div>
+      </div>
+      <div class="analysis-section">
+        <div class="analysis-title">📝 Recommendation Reason</div>
+        <div class="analysis-text" id="reasonText">—</div>
+      </div>
+
+      <div style="font-size:12px;color:var(--text-light);text-align:center;margin:12px 0;">
+        ✉️ Automated email has been sent to your inbox
+      </div>
+      <button class="btn-reset" onclick="resetForm()">← Apply Again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const JOB_WEBHOOK = 'https://efbesongwa.app.n8n.cloud/webhook/get-job-posting';
+  const SCREEN_WEBHOOK = 'https://efbesongwa.app.n8n.cloud/webhook/cv-screening';
+  let selectedFile = null;
+  let currentJob = null;
+  let stepInterval = null;
+
+  // Load job posting on page load
+  window.addEventListener('load', loadJobPosting);
+
+  async function loadJobPosting() {
+    try {
+      const res = await fetch(JOB_WEBHOOK);
+      const data = await res.json();
+      const job = Array.isArray(data) ? data[0] : data;
+      currentJob = job;
+      renderJobPosting(job);
+    } catch (err) {
+      console.error('Failed to load job posting:', err);
+      document.getElementById('jobLoading').innerHTML = '<div style="padding:20px;text-align:center;color:#94a3b8;font-size:14px;">⚠️ Failed to load job posting. Please refresh.</div>';
     }
-  ],
-  "pinData": {},
-  "connections": {
-    "Groq Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "AI: Extract Candidate Data",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Groq Chat Model1": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "AI: Screen & Match Requirements",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Receive CV Upload": {
-      "main": [
-        [
-          {
-            "node": "Extract Text from PDF",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extract Text from PDF": {
-      "main": [
-        [
-          {
-            "node": "Prepare Extracted Data",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare Extracted Data": {
-      "main": [
-        [
-          {
-            "node": "AI: Extract Candidate Data",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "AI: Extract Candidate Data": {
-      "main": [
-        [
-          {
-            "node": "AI: Screen & Match Requirements",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "AI: Screen & Match Requirements": {
-      "main": [
-        [
-          {
-            "node": "Log Candidate to Sheet",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Log Candidate to Sheet": {
-      "main": [
-        [
-          {
-            "node": "Route by Recommendation",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Route by Recommendation": {
-      "main": [
-        [
-          {
-            "node": "Email: Interview Invitation",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Email: Rejection Notice",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Email: Interview Invitation": {
-      "main": [
-        [
-          {
-            "node": "Format Response for Frontend",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Email: Rejection Notice": {
-      "main": [
-        [
-          {
-            "node": "Format Response for Frontend",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Format Response for Frontend": {
-      "main": [
-        [
-          {
-            "node": "Respond to Frontend",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+  }
+
+  function renderJobPosting(job) {
+    document.getElementById('jobLoading').style.display = 'none';
+    document.getElementById('jobContent').style.display = 'block';
+
+    document.getElementById('companyName').textContent = job.company_name;
+    document.getElementById('companyAbout').textContent = job.company_about;
+    document.getElementById('jobTitle').textContent = job.position;
+    document.getElementById('workType').textContent = '🏠 ' + job.work_type;
+    document.getElementById('salaryRange').textContent = '$' + Number(job.salary_min).toLocaleString() + ' – $' + Number(job.salary_max).toLocaleString() + ' / ' + job.salary_period;
+    document.getElementById('jobdesk').textContent = job.jobdesk;
+
+    // Facilities as tags
+    const facEl = document.getElementById('facilities');
+    facEl.innerHTML = '';
+    job.facilities.split(',').forEach(f => {
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = f.trim();
+      facEl.appendChild(tag);
+    });
+
+    // Requirements as list
+    const reqEl = document.getElementById('requirements');
+    reqEl.innerHTML = '';
+    job.requirements.split(',').forEach((r, i) => {
+      const item = document.createElement('div');
+      item.className = 'req-item';
+      item.innerHTML = `<div class="req-bullet">${i + 1}</div><div>${r.trim()}</div>`;
+      reqEl.appendChild(item);
+    });
+  }
+
+  // Drag & drop
+  const uploadArea = document.getElementById('uploadArea');
+  uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+  uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+  uploadArea.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type === 'application/pdf') setFile(file);
+    else alert('Please upload a PDF file only.');
+  });
+
+  function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) setFile(file);
+  }
+
+  function setFile(file) {
+    selectedFile = file;
+    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+    document.getElementById('uploadPrompt').style.display = 'none';
+    document.getElementById('uploadSuccess').style.display = 'block';
+    document.getElementById('uploadedFileName').textContent = file.name;
+    uploadArea.classList.add('has-file');
+    document.getElementById('fileInfo').classList.add('show');
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = sizeMB + ' MB';
+  }
+
+  function removeFile() {
+    selectedFile = null;
+    document.getElementById('cvFile').value = '';
+    document.getElementById('uploadPrompt').style.display = 'block';
+    document.getElementById('uploadSuccess').style.display = 'none';
+    uploadArea.classList.remove('has-file');
+    document.getElementById('fileInfo').classList.remove('show');
+  }
+
+  function animateSteps() {
+    const steps = ['step1','step2','step3','step4'];
+    let i = 0;
+    steps.forEach(s => { document.getElementById(s).classList.remove('active','done'); });
+    document.getElementById(steps[0]).classList.add('active');
+    return setInterval(() => {
+      document.getElementById(steps[i]).classList.remove('active');
+      document.getElementById(steps[i]).classList.add('done');
+      i++;
+      if (i < steps.length) document.getElementById(steps[i]).classList.add('active');
+    }, 4000);
+  }
+
+  async function submitCandidate() {
+    if (!selectedFile) { alert('Please upload your CV in PDF format!'); return; }
+
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('resultPanel').style.display = 'none';
+    document.getElementById('loadingState').style.display = 'block';
+    stepInterval = animateSteps();
+
+    try {
+      const formData = new FormData();
+      formData.append('cv', selectedFile, selectedFile.name);
+      if (currentJob) {
+        formData.append('position', currentJob.position);
+        formData.append('job_id', currentJob.job_id);
+        formData.append('requirements', currentJob.requirements);
+      }
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 120000);
+      const response = await fetch(SCREEN_WEBHOOK, { method: 'POST', body: formData, signal: controller.signal });
+      clearTimeout(timeout);
+      clearInterval(stepInterval);
+
+      const data = await response.json();
+      const analysisText = data[0]?.text || data?.text || JSON.stringify(data);
+      const extracted = data[0]?.extracted || data?.extracted || {};
+      const name = extracted.name || data[0]?.name || data?.name || 'Candidate';
+      const experience = extracted.years_of_experience || data[0]?.experience || data?.experience || '—';
+      const education = extracted.education || data[0]?.education || data?.education || 'Not specified';
+      const skills = extracted.skills || data[0]?.skills || data?.skills || '—';
+
+      displayResult(name, currentJob?.position || '—', experience, education, skills, analysisText);
+
+    } catch (err) {
+      clearInterval(stepInterval);
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('emptyState').style.display = 'block';
+      if (err.name === 'AbortError') alert('⏱️ Request timeout. Please try again.');
+      else alert('❌ Connection error. Make sure n8n is active.');
+      console.error(err);
     }
-  },
-  "active": true,
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate",
-    "availableInMCP": false
-  },
-  "versionId": "4b0c59ce-d8a3-4e1d-b15f-8fa405838d64",
-  "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "3893a7187a732cf148bd315f635a43520b017bdd5f4cf485dedc3d2d2a420e3e"
-  },
-  "nodeGroups": [],
-  "id": "7SGOguMn7FxfF0zq",
-  "tags": []
-}
+    document.getElementById('submitBtn').disabled = false;
+  }
+
+  function displayResult(name, position, experience, education, skills, text) {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('resultPanel').style.display = 'block';
+
+    document.getElementById('statusName').textContent = name;
+    document.getElementById('statusPosition').textContent = position;
+    document.getElementById('infoExp').textContent = experience !== '—' ? experience + ' years' : '—';
+    document.getElementById('infoEdu').textContent = education;
+    document.getElementById('infoSkills').textContent = skills;
+
+    const skillArr = typeof skills === 'string' 
+  ? skills.split(/[,;\n]+/).map(s => s.trim()).filter(s => s.length > 0)
+  : [];
+    document.getElementById('skillCount').textContent = skillArr.length || '—';
+    const expMatch = String(experience).match(/\d+/);
+    document.getElementById('expValue').textContent = expMatch ? expMatch[0] : '—';
+    const scoreMatch = text.match(/(?:score|Score)[:\s]*(\d+)/i);
+    document.getElementById('scoreValue').textContent = scoreMatch ? scoreMatch[1] : '—';
+
+    const statusCard = document.getElementById('statusCard');
+    const statusIcon = document.getElementById('statusIcon');
+    const statusLabel = document.getElementById('statusLabel');
+
+    if (text.includes('SHORTLIST')) {
+      statusCard.className = 'status-card shortlist'; statusIcon.textContent = '✅'; statusLabel.textContent = 'Shortlisted';
+    } else if (text.includes('REJECT')) {
+      statusCard.className = 'status-card reject'; statusIcon.textContent = '❌'; statusLabel.textContent = 'Not Selected';
+    } else {
+      statusCard.className = 'status-card hold'; statusIcon.textContent = '⏸️'; statusLabel.textContent = 'On Hold';
+    }
+
+    const strengths = extractSection(text, 'Strengths', 'Weaknesses') || extractSection(text, 'Strength', 'Weakness') || '—';
+    document.getElementById('strengthsText').textContent = cleanText(strengths);
+    const weakness = extractSection(text, 'Weaknesses', 'Recommendation') || extractSection(text, 'Weakness', 'Recommendation') || '—';
+    document.getElementById('weaknessText').textContent = cleanText(weakness);
+    const reason = extractSection(text, 'Reason', null) || extractSection(text, 'reason', null) || '—';
+    document.getElementById('reasonText').textContent = cleanText(reason);
+  }
+
+  function extractSection(text, start, end) {
+    const startIdx = text.toLowerCase().indexOf(start.toLowerCase());
+    if (startIdx === -1) return null;
+    const afterStart = text.slice(startIdx + start.length);
+    const endIdx = end ? afterStart.toLowerCase().indexOf(end.toLowerCase()) : -1;
+    const section = endIdx === -1 ? afterStart : afterStart.slice(0, endIdx);
+    return section.replace(/\*\*/g, '').replace(/^[\s:*#\n]+/, '').replace(/["'\]}\[]+$/, '').trim();
+  }
+
+  function cleanText(text) {
+    return text
+      .replace(/\\n\\t\*/g, ' ').replace(/\\n/g, ' ').replace(/\\t/g, ' ')
+      .replace(/\n\t\*/g, ' ').replace(/\*\*/g, '').replace(/#{1,3}\s/g, '')
+      .replace(/\n\n/g, ' ').replace(/\n/g, ' ').replace(/\s*\*\s*/g, ' ')
+      .replace(/\s+-\s+/g, ' ').replace(/["'\]}\[]+$/g, '')
+      .replace(/^\s*[:\-]+\s*/, '').replace(/\s+\d+\.?\s*$/g, '')
+      .replace(/\s+/g, ' ').trim();
+  }
+
+  function resetForm() {
+    document.getElementById('resultPanel').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'block';
+    removeFile();
+  }
+</script>
+</body>
+</html>
