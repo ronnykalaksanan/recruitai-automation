@@ -1,0 +1,178 @@
+{
+  "name": "Get Job Posting",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "get-job-posting",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        -96
+      ],
+      "id": "51098ea2-125a-4ecc-9b28-2a306cc6989c",
+      "name": "Receive Job Request",
+      "webhookId": "deb7cc10-dcd3-42dd-b32d-18f75e3df87f"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13w9BEHjHgODV8ccRBoIOqnMeXPgiOBpOTDQRWgWJWwY",
+          "mode": "list",
+          "cachedResultName": "Job Postings",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13w9BEHjHgODV8ccRBoIOqnMeXPgiOBpOTDQRWgWJWwY/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13w9BEHjHgODV8ccRBoIOqnMeXPgiOBpOTDQRWgWJWwY/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "active"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        -96
+      ],
+      "id": "09e84ea0-ede6-4253-aa66-188b7e149fcb",
+      "name": "Get Active Job Postings",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "jSVGdJ2TvJhkNAZz",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        448,
+        -96
+      ],
+      "id": "52f43b60-8f6b-4a1c-b76e-910d56b6e356",
+      "name": "Send Job Data to Frontend"
+    },
+    {
+      "parameters": {
+        "content": "## WORKFLOW 2\n\n# 📋 GET JOB POSTING\n### Provides active job posting data to the frontend on page load.\nSimple GET endpoint — no authentication required (public job listing).",
+        "height": 240,
+        "width": 592,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        16,
+        -400
+      ],
+      "typeVersion": 1,
+      "id": "2a816cdc-a933-4d8a-b43d-09692e482cae",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## 📥 ENTRY POINT\nGET webhook called when frontend loads.\nEndpoint: /webhook/get-job-posting",
+        "height": 192,
+        "width": 224,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -80,
+        64
+      ],
+      "typeVersion": 1,
+      "id": "6797e24f-5834-403e-8094-d56075548703",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## 📊 FETCH DATA\nPulls job posting(s) from Google Sheets where status = \"active\"\n💡 To add a new job: add new row in sheet with status \"active\"\n💡 To hide a job: change status to \"inactive\" (don't delete the row)",
+        "height": 320,
+        "width": 224,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        176,
+        64
+      ],
+      "typeVersion": 1,
+      "id": "e513c8a5-4a9a-4835-aaeb-7ce2b7817e39",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## 📤 RESPONSE\nReturns job data as JSON to frontend.\n⚠️ Note: Frontend currently only reads the FIRST active row (data[0]).\nFor multi-job support, frontend needs a job selector — see \"Future Improvements\" in cv-screening workflow.",
+        "height": 336,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        432,
+        64
+      ],
+      "typeVersion": 1,
+      "id": "69b51dee-47e0-4c79-a684-067327e62321",
+      "name": "Sticky Note3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Receive Job Request": {
+      "main": [
+        [
+          {
+            "node": "Get Active Job Postings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Job Postings": {
+      "main": [
+        [
+          {
+            "node": "Send Job Data to Frontend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "f3ba4c4a-894f-496d-9769-afb90b5cf69b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3893a7187a732cf148bd315f635a43520b017bdd5f4cf485dedc3d2d2a420e3e"
+  },
+  "nodeGroups": [],
+  "id": "EWr6LoDTCeZz2vmJ",
+  "tags": []
+}
