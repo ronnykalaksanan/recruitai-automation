@@ -1,0 +1,167 @@
+{
+  "name": "REC-03 - Get Candidates Dashboard [Production]",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "get-candidates",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        320
+      ],
+      "id": "7ec4010e-27f6-4a54-aee0-288071db9c83",
+      "name": "ReceiveDashboardRequest",
+      "webhookId": "YOUR_WEBHOOK_ID",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_DASHBOARD_AUTH_CREDENTIAL_ID",
+          "name": "HRDashboardAuth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID_HERE",
+          "mode": "list",
+          "cachedResultName": "AI Recruitment Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID_HERE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID_HERE/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        320
+      ],
+      "id": "b449bfca-09ad-46e1-b2f3-9c3e10914fd2",
+      "name": "GetAllCandidates",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        320
+      ],
+      "id": "dbe5844b-f77e-4ba0-8e7f-837c321c7e51",
+      "name": "RespondWithCandidates"
+    },
+    {
+      "parameters": {
+        "content": "## WORKFLOW 3\n# \ud83d\udcca GET CANDIDATES DASHBOARD\n**Owned By:** Ronny Kalaksanan\n**Last Updated:** 2026-08-01\n**Description:** Internal-only endpoint. Returns all candidate rows from AI Recruitment Tracker for the HRD Dashboard frontend.\n\n**Auth:** Header Auth required (X-Dashboard-Key). This is INTERNAL data (candidate PII, AI analysis) -- do not remove auth or make this public.\n\n**Dependencies:** Google Sheets OAuth2 (AI Recruitment Tracker), Header Auth credential \"Dashboard Key\" (create this credential and set the value to match the frontend password gate).",
+        "height": 280,
+        "width": 600,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        0
+      ],
+      "id": "edd8eecd-a022-4c76-ac56-dca7c344e6ee",
+      "name": "Sticky Note Dashboard",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "Timestamp",
+              "order": "descending"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        448,
+        320
+      ],
+      "id": "c69fec47-ad71-488f-9fe7-b071fdff3b2f",
+      "name": "SortByNewestFirst"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "ReceiveDashboardRequest": {
+      "main": [
+        [
+          {
+            "node": "GetAllCandidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetAllCandidates": {
+      "main": [
+        [
+          {
+            "node": "SortByNewestFirst",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SortByNewestFirst": {
+      "main": [
+        [
+          {
+            "node": "RespondWithCandidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "GENERATED_ON_IMPORT",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_N8N_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "id": "GENERATED_ON_IMPORT",
+  "tags": []
+}

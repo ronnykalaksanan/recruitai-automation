@@ -1,0 +1,174 @@
+{
+  "name": "ERR-01 - Global Error Handler [Production]",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "1c3130f2-dd8d-44ce-8259-d89f921d4e66",
+      "name": "ErrorTrigger"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_ERROR_LOG_SPREADSHEET_ID_HERE",
+          "mode": "list",
+          "cachedResultName": "ErrorProductionLog",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_ERROR_LOG_SPREADSHEET_ID_HERE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "ErrorLog",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_ERROR_LOG_SPREADSHEET_ID_HERE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Execution URL": "={{ $json.execution.url }}",
+            "Error Message": "={{ $json.execution.error.message }}",
+            "Workflow Name": "={{ $json.workflow.name }}",
+            "Timestamp": "={{ $now.toISO() }}",
+            "Failed Node": "={{ $json.execution.lastNodeExecuted }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Workflow Name",
+              "displayName": "Workflow Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Failed Node",
+              "displayName": "Failed Node",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Error Message",
+              "displayName": "Error Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Execution URL",
+              "displayName": "Execution URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        0
+      ],
+      "id": "d13a7005-61eb-4e48-954c-239a5f11cb9a",
+      "name": "ErrorProductionLog",
+      "retryOnFail": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "your-email@example.com",
+        "subject": "=\u26a0\ufe0f n8n Error: {{ $json.workflow.name }}",
+        "message": "= Workflow: {{ $json.workflow.name }}\n  Failed Node: {{ $json.error.node.name }}\n  Error: {{ $json.error.message }}\n  Time: {{ $now.toISO() }}\n  \n  Execution detail: {{ $json.execution.url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "7badac56-2c03-40ef-a22d-34c1fe30e13c",
+      "name": "SendErrorMessage",
+      "webhookId": "YOUR_WEBHOOK_ID",
+      "retryOnFail": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "ErrorTrigger": {
+      "main": [
+        [
+          {
+            "node": "ErrorProductionLog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ErrorProductionLog": {
+      "main": [
+        [
+          {
+            "node": "SendErrorMessage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "GENERATED_ON_IMPORT",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_N8N_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "id": "GENERATED_ON_IMPORT",
+  "tags": []
+}

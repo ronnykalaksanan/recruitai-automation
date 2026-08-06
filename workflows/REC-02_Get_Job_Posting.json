@@ -1,0 +1,185 @@
+{
+  "name": "REC-02 - Get Job Posting [Production]",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "get-job-posting",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -16,
+        304
+      ],
+      "id": "715de9f2-caae-4702-a883-8f4831e0c490",
+      "name": "Receive Job Request",
+      "webhookId": "YOUR_WEBHOOK_ID",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_JOB_POSTINGS_SPREADSHEET_ID_HERE",
+          "mode": "list",
+          "cachedResultName": "Job Postings",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_JOB_POSTINGS_SPREADSHEET_ID_HERE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_JOB_POSTINGS_SPREADSHEET_ID_HERE/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "active"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        304
+      ],
+      "id": "ca889ec8-f163-42d0-afa6-05dd54a7eeb4",
+      "name": "Get Active Job Postings",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        432,
+        304
+      ],
+      "id": "9320c954-f8bb-4451-9fe4-0420054c22df",
+      "name": "Send Job Data to Frontend"
+    },
+    {
+      "parameters": {
+        "content": "## WORKFLOW 2\n\n# \ud83d\udccb GET JOB POSTING\n### Provides active job posting data to the frontend on page load.\nSimple GET endpoint \u2014 no authentication required (public job listing).",
+        "height": 240,
+        "width": 592,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "a80ea317-4406-4235-8270-70a3b5268717",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udce5 ENTRY POINT\nGET webhook called when frontend loads.\nEndpoint: /webhook/get-job-posting",
+        "height": 192,
+        "width": 224,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -96,
+        464
+      ],
+      "typeVersion": 1,
+      "id": "6a1affa1-1a24-419d-9a7c-f4459484b5a1",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udcca FETCH DATA\nPulls job posting(s) from Google Sheets where status = \"active\"\n\ud83d\udca1 To add a new job: add new row in sheet with status \"active\"\n\ud83d\udca1 To hide a job: change status to \"inactive\" (don't delete the row)",
+        "height": 320,
+        "width": 224,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        160,
+        464
+      ],
+      "typeVersion": 1,
+      "id": "83afbf4f-4e7d-4ced-a852-c51cc60a16f0",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udce4 RESPONSE\nReturns job data as JSON to frontend.\n\u26a0\ufe0f Note: Frontend currently only reads the FIRST active row (data[0]).\nFor multi-job support, frontend needs a job selector \u2014 see \"Future Improvements\" in cv-screening workflow.",
+        "height": 336,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        416,
+        464
+      ],
+      "typeVersion": 1,
+      "id": "b67d5f1a-7a8c-4517-bf42-8c291859a345",
+      "name": "Sticky Note3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Receive Job Request": {
+      "main": [
+        [
+          {
+            "node": "Get Active Job Postings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Job Postings": {
+      "main": [
+        [
+          {
+            "node": "Send Job Data to Frontend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "YOUR_ERROR_HANDLER_WORKFLOW_ID",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "GENERATED_ON_IMPORT",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_N8N_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "id": "GENERATED_ON_IMPORT",
+  "tags": []
+}

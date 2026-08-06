@@ -1,0 +1,1495 @@
+{
+  "name": "REC-01 - AI Recruitment Intelligence System [Production]",
+  "nodes": [
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -864,
+        912
+      ],
+      "id": "811ef3fd-c505-4709-a2e6-08bcaaf0c84d",
+      "name": "Llama-3-1-8b-Instant-Extraction",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "groqApi": {
+          "id": "YOUR_GROQ_CREDENTIAL_ID",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1648,
+        752
+      ],
+      "id": "a42fa967-61e2-4fc5-bb75-7b04c2b04e18",
+      "name": "Llama-3-3-70b-Versatile-Screening",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "groqApi": {
+          "id": "YOUR_GROQ_CREDENTIAL_ID",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cv-screening",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1824,
+        688
+      ],
+      "id": "9d488ad9-f699-423b-9715-4db3208c0c52",
+      "name": "ReceiveCvUpload",
+      "webhookId": "YOUR_WEBHOOK_ID",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_HEADER_AUTH_CREDENTIAL_ID",
+          "name": "CV Upload API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "cv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1600,
+        688
+      ],
+      "id": "8d281a0a-afb9-4a34-866b-b2583a115b7b",
+      "name": "ExtractTextFromPdf"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c4a67f50-2d70-4423-a3c4-f4a2e0c7e0a6",
+              "name": "cv_text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "58111055-7595-4770-9d82-07c313dc8a27",
+              "name": "position",
+              "value": "={{ $('ReceiveCvUpload').item.json.body.position }}",
+              "type": "string"
+            },
+            {
+              "id": "5d65f7ea-6aea-4b68-8f9b-4c42fac92b55",
+              "name": "requirements",
+              "value": "={{ $('ReceiveCvUpload').item.json.body.requirements }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1376,
+        688
+      ],
+      "id": "3ab93a80-b3bd-4193-bac0-9e6ad864d741",
+      "name": "PrepareExtractedData"
+    },
+    {
+      "parameters": {
+        "text": "=Extract information from this CV text:\n\n{{ $json.cv_text_masked }}\n\nPosition applied: {{ $json.position }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "name",
+              "description": "Extract the exact full name as written in the input. Do not generate or assume any data.",
+              "required": true
+            },
+            {
+              "name": "years_of_experience",
+              "type": "number",
+              "description": "Extract the exact years_of_experience as written in the input. Do not generate or assume any data.",
+              "required": true
+            },
+            {
+              "name": "skills",
+              "description": "Extract the exact skills as written in the input. Do not generate or assume any data.",
+              "required": true
+            },
+            {
+              "name": "education",
+              "description": "Extract the exact education as written in the input. Do not generate or assume any data."
+            },
+            {
+              "name": "previous_companies",
+              "description": "Extract the exact previous_companies as written in the input. Do not generate or assume any data."
+            },
+            {
+              "name": "position_applied",
+              "description": "Extract the exact position_applied as written in the input. Do not generate or assume any data.",
+              "required": true
+            }
+          ]
+        },
+        "options": {
+          "systemPromptTemplate": "You are an expert extraction algorithm.\nOnly extract relevant information from the text.\nIf you do not know the value of an attribute asked to extract, you may omit the attribute's value.\n\nExtract information ONLY from the provided text. \nDo NOT generate, assume, or hallucinate any data.\nIf information is not found, return null."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        -928,
+        688
+      ],
+      "id": "d3bdbcf3-7632-4fb0-a55c-2d2489c87c3a",
+      "name": "ExtractCandidateData",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze this candidate for the following position:\n\nPosition: {{ $('PrepareExtractedData').item.json.position }}\n\nJob Requirements:\n{{ $('PrepareExtractedData').item.json.requirements }}\n\nCandidate Profile:\n- Candidate Reference: Candidate_A (name withheld from screening step for bias reduction)\n- Position Applied: {{ $('ExtractCandidateData').item.json.output.position_applied }}\n- Years of Experience: {{ $('ExtractCandidateData').item.json.output.years_of_experience }} years (if 0, treat as fresh graduate)\n- Education: {{ $('ExtractCandidateData').item.json.output.education }}\n- Skills: {{ $('ExtractCandidateData').item.json.output.skills }}\n- Previous Companies: {{ $('ExtractCandidateData').item.json.output.previous_companies }} (if empty, candidate has no work experience)\n\nRemember: Base your analysis ONLY on the data above. Match candidate against job requirements specifically.",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an expert HR recruiter with 10+ years of experience.  STRICT RULES - YOU MUST FOLLOW THESE WITHOUT EXCEPTION: - Use ONLY the exact data given in the user message.  - NEVER invent, assume, or hallucinate any information. - If Years of Experience is 0, say \"Fresh graduate\" \u2014 never mention any years of experience. - If Previous Companies is empty, say \"No previous work experience\" \u2014 never invent company names. - If any field is missing, write \"Not provided\" \u2014 never guess.  Always respond in this exact format: 1. Score: [0-100] 2. Strengths: [exactly 3 points based ONLY on provided data] 3. Weaknesses: [exactly 2 points based ONLY on provided data] 4. Recommendation: SHORTLIST / REJECT / HOLD 5. Reason: [1-2 sentences only]  Be concise and professional."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -576,
+        688
+      ],
+      "id": "dee31ab6-37c0-4376-ac6c-93c865f8a642",
+      "name": "ScreenAndMatchRequirements",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID_HERE",
+          "mode": "list",
+          "cachedResultName": "AI Recruitment Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID_HERE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID_HERE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now }}",
+            "Name": "={{ $('ExtractCandidateData').item.json.output.name }}",
+            "Email": "={{ $('DetectAndMaskPii').item.json.candidate_email }}",
+            "Phone": "='{{ $('DetectAndMaskPii').item.json.candidate_phone }}",
+            "Position": "={{ $('ExtractCandidateData').item.json.output.position_applied }}",
+            "Experience": "={{ $('ExtractCandidateData').item.json.output.years_of_experience }}",
+            "Skills": "={{ $('ExtractCandidateData').item.json.output.skills }}",
+            "Education": "={{ $('ExtractCandidateData').item.json.output.education }}",
+            "Previous Companies": "={{ $('ExtractCandidateData').item.json.output.previous_companies }}",
+            "AI Score": "={{ $json.text }}",
+            "Recommendation": "={{ $json.text }}",
+            "Status": "Pending",
+            "Candidate ID": "={{ $('DetectAndMaskPii').item.json.candidate_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Position",
+              "displayName": "Position",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Experience",
+              "displayName": "Experience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Skills",
+              "displayName": "Skills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Education",
+              "displayName": "Education",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Previous Companies",
+              "displayName": "Previous Companies",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "AI Score",
+              "displayName": "AI Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Recommendation",
+              "displayName": "Recommendation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Candidate ID",
+              "displayName": "Candidate ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "GitHub Username",
+              "displayName": "GitHub Username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "GitHub Tech Stack",
+              "displayName": "GitHub Tech Stack",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "GitHub Last Activity",
+              "displayName": "GitHub Last Activity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Interviewer Discrepancy Notes",
+              "displayName": "Interviewer Discrepancy Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Suggested Follow-up Questions",
+              "displayName": "Suggested Follow-up Questions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -224,
+        688
+      ],
+      "id": "ffb1b595-a107-4df1-9167-d47a9ad75d35",
+      "name": "LogCandidateToSheet",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c9a6131b-9b55-4aed-8e2b-00d422cacabe",
+              "leftValue": "={{ $('ScreenAndMatchRequirements').item.json.text }}",
+              "rightValue": "SHORTLIST",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        0,
+        688
+      ],
+      "id": "1de4fdd5-a6a7-4a3a-986d-23f8a9695cdd",
+      "name": "RouteByRecommendation"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('DetectAndMaskPii').item.json.candidate_email }}",
+        "subject": "=Interview Invitation - {{ $('ExtractCandidateData').item.json.output.position_applied }} Position",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n<style>\n  body { margin: 0; padding: 0; background: #f4f7f9; font-family: 'Arial', sans-serif; }\n  .wrapper { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }\n  .header { background: linear-gradient(135deg, #1e40af, #3b82f6); padding: 40px 40px 32px; text-align: center; }\n  .header-icon { font-size: 48px; margin-bottom: 12px; }\n  .header h1 { color: white; font-size: 24px; margin: 0; font-weight: 700; letter-spacing: -0.5px; }\n  .header p { color: rgba(255,255,255,0.8); font-size: 14px; margin: 8px 0 0; }\n  .badge { display: inline-block; background: #22c55e; color: white; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-top: 16px; }\n  .body { padding: 40px; }\n  .greeting { font-size: 18px; font-weight: 600; color: #0f172a; margin-bottom: 16px; }\n  .text { font-size: 15px; color: #475569; line-height: 1.7; margin-bottom: 16px; }\n  .info-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 20px 24px; margin: 24px 0; }\n  .info-box-title { font-size: 13px; font-weight: 600; color: #059669; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }\n  .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #d1fae5; font-size: 14px; }\n  .info-row:last-child { border-bottom: none; }\n  .info-label { color: #64748b; }\n  .info-value { color: #0f172a; font-weight: 600; }\n  .cta { text-align: center; margin: 32px 0; }\n  .cta-btn { display: inline-block; background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 14px 32px; border-radius: 8px; font-size: 15px; font-weight: 600; text-decoration: none; }\n  .footer { background: #f8fafc; padding: 24px 40px; text-align: center; border-top: 1px solid #e2e8f0; }\n  .footer p { font-size: 12px; color: #94a3b8; margin: 0; }\n  .footer strong { color: #64748b; }\n</style>\n</head>\n<body>\n<div class=\"wrapper\">\n  <div class=\"header\">\n    <div class=\"header-icon\">\ud83c\udf89</div>\n    <h1>Congratulations!</h1>\n    <p>Your application has been reviewed</p>\n    <div class=\"badge\">\u2705 Shortlisted for Interview</div>\n  </div>\n  <div class=\"body\">\n    <div class=\"greeting\">Dear {{ $('ExtractCandidateData').item.json.output.name }},</div>\n    <p class=\"text\">We are thrilled to inform you that after carefully reviewing your application, you have been <strong>shortlisted</strong> for the next stage of our recruitment process.</p>\n    <p class=\"text\">Your skills and experience stood out to our team, and we would love to learn more about you.</p>\n    <div class=\"info-box\">\n      <div class=\"info-box-title\">\ud83d\udccb Application Details</div>\n      <div class=\"info-row\">\n        <span class=\"info-label\">Position</span>\n        <span class=\"info-value\">{{ $('ExtractCandidateData').item.json.output.position_applied }}</span>\n      </div>\n      <div class=\"info-row\">\n        <span class=\"info-label\">Status</span>\n        <span class=\"info-value\" style=\"color:#059669\">Shortlisted \u2705</span>\n      </div>\n      <div class=\"info-row\">\n        <span class=\"info-label\">Next Step</span>\n        <span class=\"info-value\">Interview Session</span>\n      </div>\n    </div>\n    <p class=\"text\">Please <strong>reply to this email</strong> to schedule your interview session at your earliest convenience. We look forward to speaking with you!</p>\n    <div class=\"cta\">\n      <a href=\"mailto:hr@company.com\" class=\"cta-btn\">\ud83d\udcc5 Schedule Interview</a>\n    </div>\n    <p class=\"text\" style=\"font-size:13px;color:#94a3b8;text-align:center;\">If you have any questions, feel free to reply to this email.</p>\n  </div>\n  <div class=\"footer\">\n    <p><strong>HR Team</strong> \u00b7 Recruitment Division</p>\n    <p style=\"margin-top:4px;\">This is an automated message from our recruitment system.</p>\n  </div>\n</div>\n</body>\n</html>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2368,
+        512
+      ],
+      "id": "6e00c51b-3e4e-403e-9a62-4f418e0c8cc3",
+      "name": "SendInterviewInvitation",
+      "webhookId": "YOUR_WEBHOOK_ID",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('DetectAndMaskPii').item.json.candidate_email }}",
+        "subject": "=Application Update - {{ $('ExtractCandidateData').item.json.output.position_applied }} Position",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n<style>\n  body { margin: 0; padding: 0; background: #f4f7f9; font-family: 'Arial', sans-serif; }\n  .wrapper { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }\n  .header { background: linear-gradient(135deg, #475569, #64748b); padding: 40px 40px 32px; text-align: center; }\n  .header-icon { font-size: 48px; margin-bottom: 12px; }\n  .header h1 { color: white; font-size: 24px; margin: 0; font-weight: 700; }\n  .header p { color: rgba(255,255,255,0.8); font-size: 14px; margin: 8px 0 0; }\n  .badge { display: inline-block; background: rgba(255,255,255,0.2); color: white; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-top: 16px; border: 1px solid rgba(255,255,255,0.3); }\n  .body { padding: 40px; }\n  .greeting { font-size: 18px; font-weight: 600; color: #0f172a; margin-bottom: 16px; }\n  .text { font-size: 15px; color: #475569; line-height: 1.7; margin-bottom: 16px; }\n  .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px 24px; margin: 24px 0; }\n  .info-box-title { font-size: 13px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }\n  .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0; font-size: 14px; }\n  .info-row:last-child { border-bottom: none; }\n  .info-label { color: #64748b; }\n  .info-value { color: #0f172a; font-weight: 600; }\n  .encourage { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 20px 24px; margin: 24px 0; }\n  .encourage p { font-size: 14px; color: #92400e; margin: 0; line-height: 1.6; }\n  .footer { background: #f8fafc; padding: 24px 40px; text-align: center; border-top: 1px solid #e2e8f0; }\n  .footer p { font-size: 12px; color: #94a3b8; margin: 0; }\n  .footer strong { color: #64748b; }\n</style>\n</head>\n<body>\n<div class=\"wrapper\">\n  <div class=\"header\">\n    <div class=\"header-icon\">\ud83d\udce9</div>\n    <h1>Application Update</h1>\n    <p>Regarding your recent application</p>\n    <div class=\"badge\">Application Status Update</div>\n  </div>\n  <div class=\"body\">\n    <div class=\"greeting\">Dear {{ $('ExtractCandidateData').item.json.output.name }},</div>\n    <p class=\"text\">Thank you for your interest in joining our team and for taking the time to apply for the position below. We truly appreciate the effort you put into your application.</p>\n    <div class=\"info-box\">\n      <div class=\"info-box-title\">\ud83d\udccb Application Details</div>\n      <div class=\"info-row\">\n        <span class=\"info-label\">Position</span>\n        <span class=\"info-value\">{{ $('ExtractCandidateData').item.json.output.position_applied }}</span>\n      </div>\n      <div class=\"info-row\">\n        <span class=\"info-label\">Status</span>\n        <span class=\"info-value\" style=\"color:#dc2626\">Not Selected \u274c</span>\n      </div>\n    </div>\n    <p class=\"text\">After careful consideration, we regret to inform you that we will not be moving forward with your application at this time. This was a difficult decision as we received many strong applications.</p>\n    <div class=\"encourage\">\n      <p>\ud83d\udc9b <strong>Don't be discouraged!</strong> We encourage you to continue developing your skills and apply for future opportunities that match your profile. Every experience is a stepping stone to success.</p>\n    </div>\n    <p class=\"text\">We wish you all the best in your job search and future endeavors. Thank you again for considering us as your potential employer.</p>\n  </div>\n  <div class=\"footer\">\n    <p><strong>HR Team</strong> \u00b7 Recruitment Division</p>\n    <p style=\"margin-top:4px;\">This is an automated message from our recruitment system.</p>\n  </div>\n</div>\n</body>\n</html>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        832
+      ],
+      "id": "af86bc75-832e-41ff-9c5e-fa9411adb53a",
+      "name": "SendRejectionNotice",
+      "webhookId": "YOUR_WEBHOOK_ID",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bbf87118-f0d2-4d1f-a520-2c0d9feb046f",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "08fe802d-bae7-481f-85f6-88e23ec44be1",
+              "name": "candidate ",
+              "value": "={{ $('ExtractCandidateData').item.json.output.name }}",
+              "type": "string"
+            },
+            {
+              "id": "6605e94d-72e9-43cd-8be1-6accaa40f654",
+              "name": "recommendation ",
+              "value": "={{ $('ScreenAndMatchRequirements').item.json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "7d9d2698-5f6b-40e8-a2be-58529a78ac5d",
+              "name": "name",
+              "value": "={{ $('ExtractCandidateData').item.json.output.name }}",
+              "type": "string"
+            },
+            {
+              "id": "c5a55109-9596-4f06-9f8e-ac097c23fbab",
+              "name": "experience",
+              "value": "={{ $('ExtractCandidateData').item.json.output.years_of_experience }}",
+              "type": "string"
+            },
+            {
+              "id": "73310821-cab1-410b-b4f6-786a61dee721",
+              "name": "education",
+              "value": "={{ $('ExtractCandidateData').item.json.output.education }}",
+              "type": "string"
+            },
+            {
+              "id": "44d8fe82-bfa7-4b77-8b0c-8f35e7e26107",
+              "name": "skills",
+              "value": "={{ $('ExtractCandidateData').item.json.output.skills }}",
+              "type": "string"
+            },
+            {
+              "id": "7cb3f75a-258b-4b86-bd8e-7b762daff208",
+              "name": "text",
+              "value": "={{ $('ScreenAndMatchRequirements').item.json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        752
+      ],
+      "id": "eb9d5ed5-8b1c-4170-b5ed-8581d5577134",
+      "name": "FormatResponseForFrontend"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        752
+      ],
+      "id": "f7b76218-86c4-4ba0-b63a-0979c32edfe9",
+      "name": "RespondToFrontend"
+    },
+    {
+      "parameters": {
+        "content": "## WORKFLOW 1\n# \ud83e\udde0 AI RECRUITMENT INTELLIGENCE SYSTEM v2\n**Owned By:** Ronny Kalaksanan\n**Last Updated:** 2026-07-31 (v2.0 - GitHub Enrichment + Caching + Interviewer Briefing)\n**Description:** CV upload -> extract & mask PII -> screen vs requirements -> log -> [if shortlisted] GitHub enrichment (cached) -> interviewer briefing -> update sheet -> notify.\n\n**Dependencies:** Groq API, Google Sheets OAuth2 (tabs: main log + \"GitHub Cache\" -- CREATE THIS TAB manually with headers: github_username, cached_data, cached_at), Gmail OAuth2.\n\n\u26a0\ufe0f SETUP TODO before running: (1) create \"GitHub Cache\" tab in the spreadsheet, then reselect it in CheckGithubCache and WriteGithubCache nodes (placeholder value used here), (2) add columns to main sheet: Candidate ID, GitHub Username, GitHub Tech Stack, GitHub Last Activity, Interviewer Discrepancy Notes, Suggested Follow-up Questions, (3) optional: set GITHUB_TOKEN env var in n8n Cloud once you have a PAT, (4) add Header Auth to ReceiveCvUpload webhook, (5) create Global ErrorHandler workflow.",
+        "height": 464,
+        "width": 1040,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1248,
+        -192
+      ],
+      "typeVersion": 1,
+      "id": "aae03506-8ecf-4a8f-b6f0-63172eb21f72",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\ude80 FUTURE IMPROVEMENTS\n\n1. MULTI JOB POSTING\n   - Frontend currently only shows data[0] from sheet\n   - Need: job selector dropdown OR job_id in URL param\n   - Backend: filter by job_id, not just \"active\" status\n\n2. CANDIDATE DATABASE\n   - Currently only logs to Sheets (good for demo, not scalable)\n   - Upgrade to: Airtable / Supabase / PostgreSQL for larger volume\n\n3. DUPLICATE APPLICATION CHECK\n   - No check if same candidate applies twice for same job\n   - Add: email + job_id uniqueness validation\n\n4. OCR SUPPORT\n   - Current \"Extract from File\" only works on text-based PDF\n   - Scanned/image CVs will fail\n   - Upgrade: add OCR node (e.g. Google Vision API) as fallback\n\n5. HR DASHBOARD\n   - No way to view all candidates in one place currently\n   - Build: simple admin frontend to view/filter/export candidates\n\n6. INTERVIEW SCHEDULING\n   - \"Reply to schedule interview\" is manual right now\n   - Upgrade: integrate Calendly/Google Calendar for auto-booking\n\n7. RATE LIMITING / SPAM PROTECTION\n   - Webhook is public, no protection against spam submissions\n   - Add: simple captcha or submission rate limit\n\n8. MULTI-LANGUAGE SUPPORT\n   - Currently English-only prompts and emails\n   - Could detect CV language and respond accordingly",
+        "height": 880,
+        "width": 512
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1840,
+        1056
+      ],
+      "typeVersion": 1,
+      "id": "8c380c4a-d675-4ba0-b71b-d733cd6b689e",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.item.json.cv_text;\n\nconst emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/);\nconst phoneMatch = text.match(/(\\+?\\d[\\d\\s\\-()]{7,}\\d)/);\n\nconst candidate_email = emailMatch ? emailMatch[0] : null;\nconst candidate_phone = phoneMatch ? phoneMatch[0].trim() : null;\n\nlet masked = text;\nif (candidate_email) masked = masked.split(candidate_email).join('[EMAIL_REDACTED]');\nif (candidate_phone) masked = masked.split(candidate_phone).join('[PHONE_REDACTED]');\n\nconst candidate_id = `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;\n\nreturn {\n  ...$input.item.json,\n  candidate_id,\n  candidate_email,\n  candidate_phone,\n  cv_text_masked: masked\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1152,
+        688
+      ],
+      "id": "86cb7210-8723-4fef-947b-0180ba135bdd",
+      "name": "DetectAndMaskPii"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $('DetectAndMaskPii').item.json.cv_text || '';\nconst match = text.match(/github\\.com\\/([a-zA-Z0-9-]+)/i);\nconst github_username = match ? match[1] : null;\nreturn { ...$input.item.json, github_username };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        512
+      ],
+      "id": "6f69a394-5184-4d20-bb9b-0f83563d7b2f",
+      "name": "ExtractGithubUsername",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID_HERE",
+          "mode": "list",
+          "cachedResultName": "AI Recruitment Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID_HERE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1514940282,
+          "mode": "list",
+          "cachedResultName": "GitHubCache",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID_HERE/edit#gid=1514940282"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "github_username",
+              "lookupValue": "={{ $json.github_username }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        448,
+        512
+      ],
+      "id": "e71bdadc-d512-413e-bbed-5dded5018574",
+      "name": "CheckGithubCache",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst cacheRows = items.filter(i => i.json && i.json.github_username);\nconst usernameNode = $('ExtractGithubUsername').item.json;\nconst github_username = usernameNode.github_username;\n\nif (!github_username) {\n  return { ...usernameNode, cache_hit: false, use_cache: false, cached_data: null };\n}\n\nif (cacheRows.length === 0) {\n  return { ...usernameNode, cache_hit: false, use_cache: false, cached_data: null };\n}\n\nconst row = cacheRows[0].json;\nconst cachedAt = new Date(row.cached_at);\nconst ageDays = (Date.now() - cachedAt.getTime()) / (1000 * 60 * 60 * 24);\nconst isFresh = ageDays <= 30;\n\nlet cached_data = null;\ntry { cached_data = JSON.parse(row.cached_data); } catch (e) { cached_data = null; }\n\nreturn {\n  ...usernameNode,\n  cache_hit: true,\n  use_cache: isFresh && !!cached_data,\n  cached_data\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        512
+      ],
+      "id": "004d0856-aaca-4d1c-beec-6d6d5c2932e6",
+      "name": "EvaluateGithubCache"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cache-fresh-cond",
+              "leftValue": "={{ $json.use_cache }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        512
+      ],
+      "id": "8108777b-669b-420c-b29e-b81aa7fe9c58",
+      "name": "IsGithubCacheFresh"
+    },
+    {
+      "parameters": {
+        "jsCode": "return { ...$input.item.json, github_enrichment: $input.item.json.cached_data };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        416
+      ],
+      "id": "03c2c2b0-5f12-4e5c-951f-8f2602da96a8",
+      "name": "UseCachedGithubData"
+    },
+    {
+      "parameters": {
+        "jsCode": "async function fetchWithRetry(url, headers, maxRetries = 2) {\n  for (let attempt = 0; attempt <= maxRetries; attempt++) {\n    try {\n      const result = await this.helpers.httpRequest({\n        method: 'GET', url, headers, json: true,\n        returnFullResponse: true\n      });\n      return result.body;\n    } catch (err) {\n      const status = err.response?.status || err.statusCode;\n\n      // 404 = memang nggak ada, bukan kegagalan -> jangan retry, langsung throw ke caller\n      if (status === 404) throw err;\n\n      // Kalau udah percobaan terakhir, menyerah\n      if (attempt === maxRetries) throw err;\n\n      // Transient failure (timeout, 429, 5xx) -> tunggu, coba lagi\n      const waitMs = 1000 * (attempt + 1); // 1s, 2s, ...\n      await new Promise(resolve => setTimeout(resolve, waitMs));\n    }\n  }\n}\n\nconst username = $json.github_username;\nconst headers = { 'User-Agent': 'n8n-recruitment', 'Authorization': 'Bearer YOUR_GITHUB_TOKEN_HERE' };\n\nlet github_enrichment = {\n  found: false, public_repos: 0, followers: 0, account_created: null,\n  last_activity: null, languages: {}, frameworks_detected: [], top_repos: []\n};\n\nif (!username) {\n  return { ...$input.item.json, github_enrichment };\n}\n\ntry {\n  const user = await fetchWithRetry.call(this, `https://api.github.com/users/${username}`, headers);\n\n  const repos = await fetchWithRetry.call(this, `https://api.github.com/users/${username}/repos?sort=pushed&per_page=5`, headers)\n    .catch(() => []);\n\n  const languageTotals = {};\n  const frameworks = new Set();\n  const topRepos = [];\n\n  for (const repo of (repos || []).slice(0, 5)) {\n    topRepos.push({ name: repo.name, pushed_at: repo.pushed_at, language: repo.language });\n\n    try {\n      const langs = await fetchWithRetry.call(this, repo.languages_url, headers);\n      for (const [lang, bytes] of Object.entries(langs)) {\n        languageTotals[lang] = (languageTotals[lang] || 0) + bytes;\n      }\n    } catch (e) {}\n\n    for (const manifestFile of ['pyproject.toml', 'composer.json', 'package.json']) {\n      try {\n        await fetchWithRetry.call(\n          this,\n          `https://api.github.com/repos/${username}/${repo.name}/contents/${manifestFile}`,\n          headers\n        );\n        if (manifestFile === 'pyproject.toml') frameworks.add('Python (pyproject.toml)');\n        if (manifestFile === 'composer.json') frameworks.add('PHP (composer.json)');\n        if (manifestFile === 'package.json') frameworks.add('Node.js (package.json)');\n      } catch (e) {\n        // 404 = manifest not present in this repo, expected and fine\n      }\n    }\n  }\n\n  github_enrichment = {\n    found: true,\n    public_repos: user.public_repos,\n    followers: user.followers,\n    account_created: user.created_at,\n    last_activity: topRepos.length ? topRepos[0].pushed_at : null,\n    languages: languageTotals,\n    frameworks_detected: Array.from(frameworks),\n    top_repos: topRepos\n  };\n} catch (e) {\n  github_enrichment.error = e.message;\n}\n\nreturn { ...$input.item.json, github_enrichment };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        608
+      ],
+      "id": "5ccc0b57-71e0-4182-b549-10e62be2d674",
+      "name": "FetchGithubEnrichmentLive"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID_HERE",
+          "mode": "list",
+          "cachedResultName": "AI Recruitment Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID_HERE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1514940282,
+          "mode": "list",
+          "cachedResultName": "GitHubCache",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID_HERE/edit#gid=1514940282"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "github_username": "={{ $json.github_username }}",
+            "cached_data": "={{ JSON.stringify($json.github_enrichment) }}",
+            "cached_at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "github_username"
+          ],
+          "schema": [
+            {
+              "id": "github_username",
+              "displayName": "github_username",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cached_data",
+              "displayName": "cached_data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cached_at",
+              "displayName": "cached_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1344,
+        608
+      ],
+      "id": "e5215d04-f1b8-4b23-a2be-5386143f4aae",
+      "name": "WriteGithubCache",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID_HERE",
+          "mode": "list",
+          "cachedResultName": "AI Recruitment Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID_HERE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "LogCandidate",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID_HERE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Candidate ID": "={{ $('DetectAndMaskPii').item.json.candidate_id }}",
+            "GitHub Username": "={{ $('EvaluateGithubCache').item.json.github_username }}",
+            "GitHub Tech Stack": "={{ JSON.stringify($json.github_enrichment.languages) }} | Frameworks: {{ JSON.stringify($json.github_enrichment.frameworks_detected) }}",
+            "GitHub Last Activity": "={{ $json.github_enrichment.last_activity }}",
+            "Interviewer Discrepancy Notes": "={{ $json.output.discrepancy_summary }}",
+            "Suggested Follow-up Questions": "={{ $json.output.suggested_questions }}"
+          },
+          "matchingColumns": [
+            "Candidate ID"
+          ],
+          "schema": [
+            {
+              "id": "Candidate ID",
+              "displayName": "Candidate ID",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "GitHub Username",
+              "displayName": "GitHub Username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "GitHub Tech Stack",
+              "displayName": "GitHub Tech Stack",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "GitHub Last Activity",
+              "displayName": "GitHub Last Activity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Interviewer Discrepancy Notes",
+              "displayName": "Interviewer Discrepancy Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Suggested Follow-up Questions",
+              "displayName": "Suggested Follow-up Questions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2144,
+        512
+      ],
+      "id": "15d773d5-0efc-44bc-9fe5-312e35291a76",
+      "name": "UpdateSheetWithBriefing",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udd0d GITHUB ENRICHMENT (v2)\nRuns ONLY for shortlisted candidates.\nCache TTL: 30 days, keyed by github_username.\nUnauthenticated by default (60 req/hr) -- set .GITHUB_TOKEN once you generate a PAT to raise the limit to 5000/hr.\nManifest check covers: pyproject.toml, composer.json, package.json across top 5 repos.",
+        "height": 280,
+        "width": 700,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -144,
+        -192
+      ],
+      "typeVersion": 1,
+      "id": "b3d8e969-58e6-4958-9e0c-32df7a9549f0",
+      "name": "Sticky Note GH"
+    },
+    {
+      "parameters": {
+        "text": "=Compare this candidate's CV claims against their GitHub activity, and prepare an interviewer briefing.\n\nCV Claims:\n- Skills: {{ $('ExtractCandidateData').item.json.output.skills }}\n- Years of Experience: {{ $('ExtractCandidateData').item.json.output.years_of_experience }}\n- Education: {{ $('ExtractCandidateData').item.json.output.education }}\n\nGitHub Data:\n- Found on GitHub: {{ $json.github_enrichment.found }}\n- Public Repos: {{ $json.github_enrichment.public_repos }}\n- Languages (by bytes): {{ JSON.stringify($json.github_enrichment.languages) }}\n- Frameworks Detected: {{ JSON.stringify($json.github_enrichment.frameworks_detected) }}\n- Last Activity: {{ $json.github_enrichment.last_activity }}\n\nIdentify concrete discrepancies (e.g. claimed skill not reflected in repos, inactive account, mismatched seniority vs repo complexity). If GitHub data was not found, note that explicitly and suggest verifying the candidate's technical claims directly.\nThen produce 3-5 specific follow-up interview questions targeting the discrepancies found.",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "discrepancy_summary",
+              "description": "2-4 sentence summary of gaps between CV claims and GitHub evidence. If no GitHub data, state that clearly.",
+              "required": true
+            },
+            {
+              "name": "suggested_questions",
+              "description": "3-5 specific follow-up interview questions as a numbered list, targeting the discrepancies found",
+              "required": true
+            }
+          ]
+        },
+        "options": {
+          "systemPromptTemplate": "You are a technical interviewer's assistant. Base your analysis ONLY on the data provided. Do not invent GitHub activity that wasn't given to you. Be specific and factual, not generic."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        1568,
+        512
+      ],
+      "id": "3b7a2075-2afc-4311-884e-8d4ea1708d4e",
+      "name": "GenerateInterviewerBriefing"
+    },
+    {
+      "parameters": {
+        "jsCode": "let github_enrichment;\ntry {\n  github_enrichment = $('UseCachedGithubData').item.json.github_enrichment;\n} catch (e) {}\n\nif (!github_enrichment) {\n  try {\n    github_enrichment = $('FetchGithubEnrichmentLive').item.json.github_enrichment;\n  } catch (e) {}\n}\n\nreturn { ...$input.item.json, github_enrichment };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        512
+      ],
+      "id": "88231e0a-47a5-4c21-aeff-9d85e87c52b3",
+      "name": "ReattachGithubData"
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udce5 ENTRY POINT\nReceives PDF CV + position + requirements from the frontend (multipart/form-data). Field name: \"cv\" for the file.\n\n\ud83d\udd10 Protected by Header Auth (X-API-Key) -- filters out random bots/scrapers.",
+        "height": 220,
+        "width": 380,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1872,
+        384
+      ],
+      "id": "245dca87-cdaa-4d75-b3a3-e274639517f8",
+      "name": "Sticky - ENTRY POINT",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udcc4 PDF PROCESSING\nExtractTextFromPdf: converts the uploaded PDF into raw text.\nPrepareExtractedData: pulls position & requirements out of the webhook body into clean fields for downstream nodes.",
+        "height": 220,
+        "width": 380,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1472,
+        384
+      ],
+      "id": "5ca7901a-d6d2-48a5-bac8-0b011e7bc7bf",
+      "name": "Sticky - PDF PROCESSING",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udee1\ufe0f PII PROTECTION\nDetectAndMaskPii (Code node): regex-detects email & phone BEFORE anything reaches the LLM. Redacts them from cv_text -> cv_text_masked.\nAlso generates candidate_id here (unique key used later to update the right Sheet row after GitHub enrichment).",
+        "height": 220,
+        "width": 380,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1072,
+        384
+      ],
+      "id": "efe1f332-64ac-4253-aa86-12ce2af485da",
+      "name": "Sticky - PII PROTECTION",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## \ud83e\udde0 AI EXTRACTION\nExtractCandidateData (Information Extractor) reads the MASKED cv text and pulls out structured fields: name, skills, experience, education, etc.\nUses Llama-3.1-8b-Instant -- small/fast model, right-sized because this is an extraction task, not complex reasoning.\nEmail & phone are NOT extracted here anymore -- they come from the regex step instead (more reliable + less PII sent to the LLM).",
+        "height": 220,
+        "width": 380,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -672,
+        384
+      ],
+      "id": "8e220bf3-6c51-47b4-8d3e-34b200bd0754",
+      "name": "Sticky - AI EXTRACTION",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## \u2696\ufe0f AI SCREENING\nScreenAndMatchRequirements compares the candidate's extracted profile against the job's position/requirements, produces an AI Score + Recommendation (Shortlist / Hold / Reject).\nUses Llama-3.3-70b-Versatile -- larger model, needed here because this is actual reasoning/judgment, not simple extraction.",
+        "height": 220,
+        "width": 380,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -256,
+        384
+      ],
+      "id": "5577796d-ac0f-4546-894e-82fad6a9156f",
+      "name": "Sticky - AI SCREENING",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udcbe LOG & ROUTE\nLogCandidateToSheet: writes the candidate row FIRST (before any notification goes out -- SOP rule: save before notify).\nRouteByRecommendation (IF): checks if Recommendation contains \"SHORTLIST\". TRUE -> GitHub Enrichment branch. FALSE -> straight to rejection email.",
+        "height": 220,
+        "width": 380,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -320,
+        864
+      ],
+      "id": "a5dd11a7-29bf-4e1d-9df2-6f2c72b4b080",
+      "name": "Sticky - LOG & ROUTE",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## \u274c REJECT PATH\nSendRejectionNotice: sends the standard rejection email. No GitHub API calls happen for this path -- saves quota for candidates who won't move forward anyway.",
+        "height": 220,
+        "width": 380,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        112,
+        992
+      ],
+      "id": "7e7fd3f0-fffa-4049-885e-d8a9cf622c8d",
+      "name": "Sticky - REJECT PATH",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udd0d GITHUB ENRICHMENT -- Cache Check\nRuns ONLY for shortlisted candidates.\nExtractGithubUsername: regex-parses github.com/username from the CV text.\nCheckGithubCache: looks up that username in the \"GitHub Cache\" sheet tab (Always Output Data ON -- so an empty result doesn't kill the branch).\nEvaluateGithubCache: decides if a hit is fresh (TTL 30 days).\nIsGithubCacheFresh (IF): fresh cache -> use it as-is. Otherwise -> fetch live from GitHub.",
+        "height": 220,
+        "width": 380,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        208,
+        272
+      ],
+      "id": "bf8211d1-ef84-4033-9caa-863499c19304",
+      "name": "Sticky - GITHUB ENRICHMENT (cache check)",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## \ud83c\udf10 GITHUB ENRICHMENT -- Live Fetch\nFetchGithubEnrichmentLive (Code node): calls GitHub API for user profile, top 5 repos, language breakdown per repo, and checks for pyproject.toml / composer.json / package.json. Wrapped in retry-with-backoff for transient failures (404s are NOT retried -- they just mean \"not present\").\nUses this.helpers.httpRequest (NOT fetch() -- not available in n8n Code node sandbox).\nWriteGithubCache: saves the result back to the cache sheet for next time.",
+        "height": 220,
+        "width": 380,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1104,
+        800
+      ],
+      "id": "0a7646bf-88c6-4203-8645-f7b1807e990e",
+      "name": "Sticky - GITHUB ENRICHMENT (live fetch)",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udcdd INTERVIEWER BRIEFING\nGenerateInterviewerBriefing: compares CV claims vs GitHub evidence, produces a discrepancy summary + 3-5 suggested follow-up questions. Reuses the same 70b model as Screening.\nReattachGithubData: Information Extractor nodes don't auto-carry prior fields, so this re-attaches github_enrichment before it's needed for the Sheet write.\nUpdateSheetWithBriefing: updates the SAME row from LogCandidateToSheet (matched by Candidate ID) with GitHub + briefing columns.",
+        "height": 220,
+        "width": 380,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1568,
+        240
+      ],
+      "id": "2a627902-4934-4642-adcc-5292c2f01989",
+      "name": "Sticky - INTERVIEWER BRIEFING",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## \ud83d\udce4 RESPOND TO FRONTEND\nFormatResponseForFrontend + RespondToFrontend.\n\u26a0\ufe0f IMPORTANT: for the Interview path, this is wired directly off RouteByRecommendation (branches in parallel with GitHub Enrichment) so the browser gets a fast response WITHOUT waiting for GitHub API calls + briefing generation, which can take 20-40+ seconds. Those continue running in the background after the response is already sent.",
+        "height": 220,
+        "width": 380,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        640,
+        912
+      ],
+      "id": "6c4353bb-0255-4a3c-84f7-96f2405047a1",
+      "name": "Sticky - RESPOND TO FRONTEND",
+      "typeVersion": 1
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Llama-3-1-8b-Instant-Extraction": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "ExtractCandidateData",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llama-3-3-70b-Versatile-Screening": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "ScreenAndMatchRequirements",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "GenerateInterviewerBriefing",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ReceiveCvUpload": {
+      "main": [
+        [
+          {
+            "node": "ExtractTextFromPdf",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExtractTextFromPdf": {
+      "main": [
+        [
+          {
+            "node": "PrepareExtractedData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepareExtractedData": {
+      "main": [
+        [
+          {
+            "node": "DetectAndMaskPii",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExtractCandidateData": {
+      "main": [
+        [
+          {
+            "node": "ScreenAndMatchRequirements",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ScreenAndMatchRequirements": {
+      "main": [
+        [
+          {
+            "node": "LogCandidateToSheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LogCandidateToSheet": {
+      "main": [
+        [
+          {
+            "node": "RouteByRecommendation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RouteByRecommendation": {
+      "main": [
+        [
+          {
+            "node": "ExtractGithubUsername",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "FormatResponseForFrontend",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SendRejectionNotice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SendInterviewInvitation": {
+      "main": [
+        []
+      ]
+    },
+    "SendRejectionNotice": {
+      "main": [
+        [
+          {
+            "node": "FormatResponseForFrontend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FormatResponseForFrontend": {
+      "main": [
+        [
+          {
+            "node": "RespondToFrontend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DetectAndMaskPii": {
+      "main": [
+        [
+          {
+            "node": "ExtractCandidateData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExtractGithubUsername": {
+      "main": [
+        [
+          {
+            "node": "CheckGithubCache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CheckGithubCache": {
+      "main": [
+        [
+          {
+            "node": "EvaluateGithubCache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EvaluateGithubCache": {
+      "main": [
+        [
+          {
+            "node": "IsGithubCacheFresh",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IsGithubCacheFresh": {
+      "main": [
+        [
+          {
+            "node": "UseCachedGithubData",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FetchGithubEnrichmentLive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FetchGithubEnrichmentLive": {
+      "main": [
+        [
+          {
+            "node": "WriteGithubCache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpdateSheetWithBriefing": {
+      "main": [
+        [
+          {
+            "node": "SendInterviewInvitation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UseCachedGithubData": {
+      "main": [
+        [
+          {
+            "node": "GenerateInterviewerBriefing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WriteGithubCache": {
+      "main": [
+        [
+          {
+            "node": "GenerateInterviewerBriefing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GenerateInterviewerBriefing": {
+      "main": [
+        [
+          {
+            "node": "ReattachGithubData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ReattachGithubData": {
+      "main": [
+        [
+          {
+            "node": "UpdateSheetWithBriefing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "YOUR_ERROR_HANDLER_WORKFLOW_ID",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "GENERATED_ON_IMPORT",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_N8N_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "id": "GENERATED_ON_IMPORT",
+  "tags": []
+}
