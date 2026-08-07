@@ -322,6 +322,14 @@
     renderList();
   }
 
+function extractScoreNumber(raw) {
+    const text = String(raw);
+    const scoreMatch = text.match(/Score:\s*(\d{1,3})/i);
+    if (scoreMatch) return scoreMatch[1];
+    const anyMatch = text.match(/\d{1,3}/);
+    return anyMatch ? anyMatch[0] : '—';
+  }
+
   function renderList() {
     const q = document.getElementById('searchInput').value.toLowerCase();
     const filtered = allCandidates.filter(c => {
@@ -348,7 +356,7 @@
           </div>
           <div class="row-position">${escapeHtml(c.position)}</div>
           <div class="row-bottom">
-            <span class="score">Score: ${escapeHtml(String(c.score)).split('\\n')[0].slice(0, 40)}</span>
+            <span class="score">Score: ${extractScoreNumber(c.score)}</span>
           </div>
         </div>`;
     }).join('');
