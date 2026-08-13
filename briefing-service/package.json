@@ -1,0 +1,18 @@
+{
+  "name": "recruitment-briefing-service",
+  "version": "1.0.0",
+  "description": "Custom Node.js service untuk generate interviewer briefing, menggantikan n8n AI node",
+  "main": "step1-basic-call.js",
+  "type": "module",
+  "scripts": {
+    "step1": "node step1-basic-call.js",
+    "step2": "node test-harness.js",
+    "step3": "node server.js"
+  },
+  "dependencies": {
+    "groq-sdk": "^0.7.0",
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8",
+    "express": "^4.19.2"
+  }
+}
