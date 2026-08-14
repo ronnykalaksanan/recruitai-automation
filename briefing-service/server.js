@@ -121,7 +121,19 @@ app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-app.listen(PORT, () => {
-  console.log(`Service berjalan di http://localhost:${PORT}`);
-  console.log(`Coba: curl http://localhost:${PORT}/health`);
-});
+// --- BAGIAN 5: Kompatibilitas Vercel ---
+// Di komputer lokal, kita mau server ini terus menyala (app.listen).
+// Tapi di Vercel, kode ini dipanggil ULANG per-request (serverless) —
+// Vercel yang urus "menyalakan" servernya, kita cuma perlu export
+// objek app-nya. process.env.VERCEL otomatis ada nilainya HANYA kalau
+// kode ini jalan di infrastruktur Vercel, jadi ini cara aman membedakan
+// "sedang di lokal" vs "sedang di Vercel" tanpa perlu ubah apa pun manual.
+
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Service berjalan di http://localhost:${PORT}`);
+    console.log(`Coba: curl http://localhost:${PORT}/health`);
+  });
+}
+
+export default app;
