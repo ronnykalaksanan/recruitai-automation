@@ -159,6 +159,14 @@
   /* GitHub tech-stack language bar (signature element) */
   .lang-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 10px; background: var(--base); }
   .lang-bar span { height: 100%; }
+  .risk-row { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  .risk-bar-track { flex: 1; height: 10px; border-radius: 5px; overflow: hidden; background: var(--base); }
+  .risk-bar-fill { height: 100%; border-radius: 5px; transition: width 0.3s ease; }
+  .risk-badge { font-family: var(--font-mono); font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+  .risk-badge.low { color: #4ade80; background: rgba(74, 222, 128, 0.12); }
+  .risk-badge.medium { color: #fbbf24; background: rgba(251, 191, 36, 0.12); }
+  .risk-badge.high { color: #f87171; background: rgba(248, 113, 113, 0.12); }
+  .risk-note { font-size: 12px; color: var(--muted); margin-top: 4px; }
   .lang-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; }
   .lang-legend .item { display: flex; align-items: center; gap: 6px; color: var(--muted); }
   .lang-legend .dot { width: 8px; height: 8px; border-radius: 2px; }
@@ -229,7 +237,7 @@
 
 <script>
   // ====== CONFIG ======
-  const CANDIDATES_WEBHOOK = 'https://YOUR-N8N-DOMAIN/webhook/get-candidates'; // TODO: ganti dengan URL production kamu
+  const CANDIDATES_WEBHOOK = 'http://localhost:5678/webhook/get-candidates'; // TODO: ganti dengan URL production kamu
 
   // ====== State ======
   let allCandidates = [];
@@ -305,6 +313,7 @@
         languages, frameworks,
         discrepancy: j['Interviewer Discrepancy Notes'] || '',
         questions: j['Suggested Follow-up Questions'] || '',
+        riskScore: j['Verification Risk Score'] || '',
         timestamp: j['Timestamp'] || ''
       };
     });
@@ -374,6 +383,26 @@ function extractScoreNumber(raw) {
     const st = statusOf(c);
     const badgeLabel = st === 'shortlist' ? 'Shortlist' : st === 'hold' ? 'On Hold' : 'Reject';
 
+    let riskSection;
+    const riskNum = parseInt(c.riskScore, 10);
+    if (isNaN(riskNum)) {
+      riskSection = `<div class="no-github">Not generated yet (briefing may still be running in the background).</div>`;
+    } else {
+      const level = riskNum >= 70 ? 'high' : riskNum >= 40 ? 'medium' : 'low';
+      const color = level === 'high' ? '#f87171' : level === 'medium' ? '#fbbf24' : '#4ade80';
+      const note = level === 'high'
+        ? 'Significant mismatch between CV claims and GitHub evidence — probe carefully.'
+        : level === 'medium'
+        ? 'Some claims are not fully backed by GitHub evidence — worth a follow-up.'
+        : 'CV claims largely align with GitHub evidence.';
+      riskSection = `
+        <div class="risk-row">
+          <div class="risk-bar-track"><div class="risk-bar-fill" style="width:${riskNum}%; background:${color}"></div></div>
+          <span class="risk-badge ${level}">${riskNum}/100</span>
+        </div>
+        <div class="risk-note">${note}</div>`;
+    }
+
     let githubSection;
     const langEntries = Object.entries(c.languages || {});
     const totalBytes = langEntries.reduce((s, [,v]) => s + v, 0);
@@ -429,6 +458,11 @@ function extractScoreNumber(raw) {
         <div class="section">
           <div class="section-label">GitHub Tech Stack</div>
           ${githubSection}
+        </div>
+
+        <div class="section">
+          <div class="section-label">Verification Risk Score</div>
+          ${riskSection}
         </div>
 
         <div class="section">
